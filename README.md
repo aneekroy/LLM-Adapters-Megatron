@@ -61,7 +61,7 @@ pip install -r requirements.txt
 # export_hf_checkpoint.py
 # export_state_dict_checkpoint.py
 
-export BASE_MODEL=yahma/llama-7b-hf
+export BASE_MODEL=/home/aneek/models/Llama-3.2-1B
 ```
 
 Both `finetune.py` and `generate.py` use `--base_model` flag as shown further below.
@@ -76,8 +76,8 @@ Example usage for multiple GPUs:
 
 ```bash
 WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 --master_port=3192 finetune.py \
-  --base_model 'yahma/llama-7b-hf' \
-  --data_path 'math_10k.json' \
+  --base_model '/home/aneek/models/Llama-3.2-1B' \
+  --data_path '/home/aneek/ActiveLearning/data/raw/classification/boolq' \
   --output_dir './trained_models/llama-lora' \
   --batch_size 16 \
   --micro_batch_size 4 \
@@ -86,6 +86,130 @@ WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 --master_port=
   --cutoff_len 256 \
   --val_set_size 120 \
   --adapter_name lora
+
+  WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=3193 finetune.py   --base_model '/home/models/Llama-3.3-70B-Instruct'   --data_path '/home/aneek/LLM-Adapters/ft-training_set/dataset/combined/train.json'   --output_dir './trained_models/instruction/llama-3.3-70B-combined-lora'   --batch_size 16   --micro_batch_size 4   --num_epochs 3   --learning_rate 3e-4   --cutoff_len 256   --val_set_size 120   --adapter_name lora
+
+
+  WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=3192 finetune.py   --base_model '/home/models/Llama-3.2-11B-Vision-Instruct'   --data_path '/home/aneek/LLM-Adapters/ft-training_set/dataset/combined/train_combined.json'   --output_dir './trained_models/vision_11b/llama-11B-combined-lora'   --batch_size 16   --micro_batch_size 4   --num_epochs 3   --learning_rate 3e-4   --cutoff_len 256   --val_set_size 120   --adapter_name lora
+
+  WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2   finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/AddSub/AddSub.json   --output_dir ./trained_models/llama-addsub-1B-overfit   --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --adapter_name lora
+
+  WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2   finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/AQuA/AQuA.json   --output_dir ./trained_models/llama-AQuA-1B-lora   --batch_size 4   --micro_batch_size 1   --num_epochs 20   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --adapter_name lora
+
+  WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2   finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/ARC-Challenge/train.json   --output_dir ./trained_models/llama-ARC-Challenge-1B-lora   --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --adapter_name lora
+
+  WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2   finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/MultiArith/MultiArith.json   --output_dir ./trained_models/llama-MultiArith-1B-lora  --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --adapter_name lora
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2   finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/hellaswag/train.json   --output_dir ./trained_models/llama-hellaswag-1B   --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+1. --pending 
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2  --master_port=3190 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/SingleEq/SingleEq.json   --output_dir ./trained_models/llama-SingleEq-1B-lora   --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --adapter_name lora
+
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2  --master_port=3189 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/SingleEq/SingleEq.json   --output_dir ./trained_models/llama-SingleEq-1B  --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+2. --pending 
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1  --master_port=3191 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/boolq/train.json   --output_dir ./trained_models/llama-boolq-1B-lora   --batch_size 4   --micro_batch_size 1   --num_epochs 5   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --adapter_name lora
+
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2  --master_port=3192 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/boolq/train.json   --output_dir ./trained_models/llama-boolq-1B  --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+
+
+3. --pending 
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2  --master_port=3193 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/AQuA/AQuA.json   --output_dir ./trained_models/llama-AQuA-1B-lora   --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --adapter_name lora
+
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2  --master_port=3194 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/SingleEq/SingleEq.json   --output_dir ./trained_models/llama-SingleEq-1B  --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+
+4. --pending 
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2  --master_port=3195 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/mawps/trainset.json  --output_dir ./trained_models/llama-mawps-1B-lora   --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --adapter_name lora
+
+# ----- didnt work ------
+
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2  --master_port=3196 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/SingleEq/SingleEq.json   --output_dir ./trained_models/llama-SingleEq-1B  --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+5. --done
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2  --master_port=3197 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/social_i_qa/train.json   --output_dir ./trained_models/llama-social_i_qa-1B-lora   --batch_size 4   --micro_batch_size 1   --num_epochs 3   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --adapter_name lora
+
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2  --master_port=3198 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/social_i_qa/train.json   --output_dir ./trained_models/llama-social_i_qa-1B  --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+6. --pending 
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1  --master_port=3202 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/ARC-Easy/train.json   --output_dir ./trained_models/llama-ARC-Easy-1B-lora   --batch_size 4   --micro_batch_size 1   --num_epochs 5   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --adapter_name lora
+
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2  --master_port=3199 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/ARC-Easy/train.json   --output_dir ./trained_models/llama-ARC-Easy-1B  --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+# ----done------
+
+
+
+7. --pending 
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=3201 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/openbookqa/train.json   --output_dir ./trained_models/llama-openbookqa-1B-lora   --batch_size 4   --micro_batch_size 1   --num_epochs 5   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --adapter_name lora
+
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2  --master_port=3202 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/openbookqa/train.json   --output_dir ./trained_models/llama-openbookqa-1B  --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+8. --pending 
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1  --master_port=3203 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/piqa/train.json   --output_dir ./trained_models/llama-piqa-1B-lora   --batch_size 4   --micro_batch_size 1   --num_epochs 5   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --adapter_name lora
+
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2  --master_port=3204 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/piqa/train.json  --output_dir ./trained_models/llama-piqa-1B  --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+
+
+9. --pending 
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 torchrun --nproc_per_node=1  --master_port=3205 finetune.py   --base_model /home/aneek/models/Llama-3.2-3B-Instruct   --data_path /home/aneek/LLM-Adapters/dataset/SVAMP/SVAMP.json  --output_dir ./trained_models/llama-SVAMP-1B-lora   --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --adapter_name lora
+
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2  --master_port=3206 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/SVAMP/SVAMP.json   --output_dir ./trained_models/llama-SVAMP-1B  --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+10. --pending 
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1  --master_port=3207 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/winogrande/train.json  --output_dir ./trained_models/llama-winogrande-1B-lora   --batch_size 4   --micro_batch_size 1   --num_epochs 3   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --adapter_name lora
+
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2  --master_port=3208 finetune.py   --base_model /home/aneek/models/Llama-3.2-1B   --data_path /home/aneek/LLM-Adapters/dataset/winogrande/train.json  --output_dir ./trained_models/llama-winogrande-3B  --batch_size 4   --micro_batch_size 1   --num_epochs 15   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+/home/aneek/LLM-Adapters/ft-training_set/alpaca_data_cleaned.json
+/home/aneek/LLM-Adapters/ft-training_set/commonsense_15k.json
+/home/aneek/LLM-Adapters/ft-training_set/math_14k.json
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=3208 finetune.py   --base_model /home/models/Llama-3.2-3B-Instruct-Sparse-0.33/   --data_path /home/aneek/LLM-Adapters/ft-training_set/alpaca_data_cleaned.json  --output_dir ./trained_models/instruct/llama-alpaca_data_cleaned-3B-Sparse0.33-lora  --batch_size 4   --micro_batch_size 1   --num_epochs 3   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+echo 'WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 --master_port=3210 finetune.py   --base_model /home/aneek/models/Llama-3.2-3B   --data_path /home/aneek/LLM-Adapters/ft-training_set/commonsense_15k.json --output_dir ./trained_models/llama-commonsense_15k-3B  --batch_size 4   --micro_batch_size 1   --num_epochs 3   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120' | at now + 1 hour
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 --master_port=3210 finetune.py   --base_model /home/aneek/models/Llama-3.2-3B   --data_path /home/aneek/LLM-Adapters/ft-training_set/dataset/combined/train.json --output_dir ./trained_models/llama-combined-3B-lora  --batch_size 4   --micro_batch_size 1   --num_epochs 3   --learning_rate 3e-5   --cutoff_len 256  --adapter_name lora --val_set_size 120
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 torchrun --nproc_per_node=1 --master_port=3090 finetune.py   --base_model /home2/models/Llama-3.2-3B-Instruct-Sparse-0.33/ --data_path /home/aneek/LLM-Adapters/ft-training_set/math_50k.json --output_dir ./trained_models/instruct/llama-math_50k-3B-Sparse0.33-lora  --batch_size 4   --micro_batch_size 1   --num_epochs 3   --learning_rate 3e-5   --cutoff_len 256  --adapter_name lora --val_set_size 120
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=3092 finetune.py   --base_model '/home2/models/Llama-3.2-3B-Instruct-Sparse-0.33/'   --data_path /home/aneek/LLM-Adapters/ft-training_set/commonsense_170k.json --output_dir ./trained_models/instruct_sparse/llama-commonsense_170k-3B-sparse-lora  --batch_size 4   --micro_batch_size 1   --num_epochs 3   --learning_rate 3e-5   --cutoff_len 256  --adapter_name lora --val_set_size 120
+
+/home/aneek/LLM-Adapters/ft-training_set/commonsense_170k.json
+
+
+/home/aneek/LLM-Adapters/dataset/SingleEq/SingleEq.json
+/home/aneek/LLM-Adapters/dataset/boolq/train.json
+/home/aneek/LLM-Adapters/dataset/social_i_qa/train.json
+/home/aneek/LLM-Adapters/dataset/ARC-Easy/train.json
+/home/aneek/LLM-Adapters/dataset/openbookqa/train.json
+/home/aneek/LLM-Adapters/dataset/piqa/train.json
+/home/aneek/LLM-Adapters/dataset/SVAMP/SVAMP.json
+/home/aneek/LLM-Adapters/dataset/winogrande/train.json
+
+
 ```
 
 The `math_10k.json` data is collected with the training sets of GSM8K, MAWPS, and AQuA(1000 examples). `yahma/llama-7b-hf` is a base model, LLaMa-7B. Add `lora` adapter to this model.
@@ -146,13 +270,35 @@ CUDA_VISIBLE_DEVICES=0 torchrun generate.py \
 To evaluate the performance of the finetuned model on the Arithmetic Reasoning tasks, you can use the following command:
 
 ```bash
+CUDA_VISIBLE_DEVICES=0,1 python evaluate.py  --model 'Llama-3.2-3B' --adapter LoRA --dataset gsm8k --base_model '/home/aneek/models/Llama-3.2-3B' --lora_weights '/home/aneek/LLM-Adapters/trained_models/llama-math_50k-3B-lora'
+
+
+```
+
+["multiarith", "addsub", "singleeq", "gsm8k", "svamp"]:
+
+
 CUDA_VISIBLE_DEVICES=0 python evaluate.py 
-    --model LLaMA-7B \ #specify the base model
+    --model LLaMA-7B
     --adapter LoRA \   #specify the adapter name ["LoRA", "AdapterH", "AdapterP", "Parallel"， "Scaled_Parallel""]
     --dataset SVAMP \  #specify the test dataset
     --base_model 'yahma/llama-7b-hf' \
-    --lora_weights './trained_models/llama-lora'
-```
+    --lora_weights '/home/aneek/LLM-Adapters/trained_models/llama-1B-gsm8k-lora'
+
+
+
+#!/usr/bin/env python
+"""
+active_learning.py – adds an uncertainty-sampling loop around finetune.py
+Usage example (2 AL rounds, 10 % → 30 % of data):
+python active_learning.py \
+    --base_model /path/llama \
+    --data_path /path/data.json \
+    --output_dir ./exp \
+    --rounds 3 --init_frac 0.1 --acq_frac 0.2
+
+
+    active learning fraction
 
 <!-- ## Resource Consumption
 
@@ -265,3 +411,935 @@ If you use <img src="picture.jpg" width="14px" height="14px"> LLM-Adapters in yo
 ## Acknowledgement
 
 This repo benefits from [PEFT](https://github.com/huggingface/peft), [Adapter-Transformer](https://github.com/adapter-hub/adapter-transformers), [Alpaca-lora](https://github.com/tloen/alpaca-lora). Thanks for their wonderful works. Additionally, we thank DONG Shan and [dream.ai](https://dream.ai/create) for the exceptional logo design, which has added immense value to our project.
+
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=3208 finetune.py   --base_model /home/models/Llama-3.2-1B-Instruct   --data_path /home/aneek/LLM-Adapters/ft-training_set/commonsense_15k.json --output_dir ./trained_models/instruct/llama-commonsense_15k-1B-lora  --batch_size 4   --micro_batch_size 1   --num_epochs 1   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 torchrun --nproc_per_node=1 --master_port=3211 finetune.py   --base_model /home/models/Llama-3.2-1B-Instruct   --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k_part2.json --output_dir ./trained_models/instruct/llama-math-14k-part2-1B-lora  --batch_size 4   --micro_batch_size 1   --num_epochs 1   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120
+
+
+./trained_models/instruct/llama-math-7k-1B-lora
+
+```bash
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-1B' --adapter LoRA --dataset gsm8k --base_model '/home/models/Llama-3.2-1b-Instruct' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-math-7k-1B-lora'
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3213 finetune.py \
+  --base_model /home/models/Llama-3.2-3B-Instruct-0.33-Wanda \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+  --output_dir ./trained_models/instruct_3B/llama-math-14k-3B-Wanda-lora \
+  --batch_size 4 --micro_batch_size 1 --num_epochs 3 \
+  --learning_rate 3e-5 --cutoff_len 256 --val_set_size 120
+
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3215 active_learning.py \
+    --base_model /home/models/Llama-3.2-3B-Instruct-0.33-Wanda \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+    --output_dir ./trained_models/instruct_3B/llama-math-14k-al50-3B-Wanda-lora \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 torchrun --nproc_per_node=1 --master_port=3210 finetune.py   --base_model /home/models/Llama-3.2-3B-Instruct   --data_path /home/aneek/LLM-Adapters/ft-training_set/math_50k.json --output_dir ./trained_models/instruct/llama-math_50-1B-lora  --batch_size 4   --micro_batch_size 1   --num_epochs 3   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+/home/aneek/LLM-Adapters/ft-training_set/alpaca_data_cleaned.json
+/home/aneek/LLM-Adapters/ft-training_set/commonsense_15k.json
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=3211 finetune.py   --base_model /home/models/Llama-3.2-1B-Instruct   --data_path /home/aneek/LLM-Adapters/ft-training_set/alpaca_data_cleaned.json --output_dir ./trained_models/instruct/llama-alpaca_data_cleaned-1B-lora  --batch_size 4   --micro_batch_size 1   --num_epochs 3   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 torchrun --nproc_per_node=1 --master_port=3212 finetune.py   --base_model /home/models/Llama-3.2-3B-Instruct   --data_path /home/aneek/LLM-Adapters/ft-training_set/commonsense_170k.json --output_dir ./trained_models/instruct/llama-commonsense_170k-3B-lora  --batch_size 4   --micro_batch_size 1   --num_epochs 2   --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 
+
+```
+copying data from megatron to bumblebee:
+
+rsync -avh --progress /home/aneek/models/  aneek@10.225.65.83:/home/aneek/LLM-Adapters/
+
+Evaluation benchmarks on Math / Commonsense datasets for Llama-3.2-1B trained on math and commonsense datasets:
+
+````bash
+
+Commons_sense_eval : ["boolq", "piqa", "social_i_qa", "hellaswag", "winogrande", "ARC-Challenge", "ARC-Easy", "openbookqa"] for commonsense_170k_1B model
+
+
+CUDA_VISIBLE_DEVICES=0,1 python commonsense_evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset boolq --base_model '/home/models/Llama-3.2-1B-Instruct/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-1B-lora'  --batch_size 16
+
+CUDA_VISIBLE_DEVICES=0,1 python commonsense_evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset piqa --base_model '/home/models/Llama-3.2-1B-Instruct/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-1B-lora'  --batch_size 16
+
+CUDA_VISIBLE_DEVICES=0,1 python commonsense_evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset social_i_qa --base_model '/home/models/Llama-3.2-1B-Instruct/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-1B-lora'  --batch_size 16
+
+CUDA_VISIBLE_DEVICES=0,1 python commonsense_evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset hellaswag --base_model '/home/models/Llama-3.2-1B-Instruct/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-1B-lora'  --batch_size 16
+
+CUDA_VISIBLE_DEVICES=0,1 python commonsense_evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset winogrande --base_model '/home/models/Llama-3.2-1B-Instruct/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-1B-lora'  --batch_size 16
+------------------------------------------------------------------------------------------------------------------------------------------------------
+CUDA_VISIBLE_DEVICES=0,1 python commonsense_evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset ARC-Challenge --base_model '/home/models/Llama-3.2-1B-Instruct/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-1B-lora'  --batch_size 16
+
+CUDA_VISIBLE_DEVICES=0,1 python commonsense_evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset openbookqa --base_model '/home/models/Llama-3.2-1B-Instruct/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-1B-lora'  --batch_size 16
+
+CUDA_VISIBLE_DEVICES=0,1 python commonsense_evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset ARC-Easy --base_model '/home/models/Llama-3.2-1B-Instruct/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-1B-lora'  --batch_size 16
+
+
+
+
+Commons_sense_eval : ["boolq", "piqa", "social_i_qa", "hellaswag", "winogrande", "ARC-Challenge", "ARC-Easy", "openbookqa"] for commonsense_170k_1B model
+
+
+CUDA_VISIBLE_DEVICES=0 python commonsense_evaluate.py  --model 'Llama-3.2-3B-Instruct' --adapter LoRA --dataset boolq --wandb_run_name boolq   --base_model '/home2/models/Llama-3.2-3B-Instruct-Sparse-0.33/' --lora_weights '/home2/palash/aneek/LLM-Adapters/trained_models/instruct_sparse/llama-commonsense_170k-3B-sparse-lora'  --batch_size 16
+
+CUDA_VISIBLE_DEVICES=0 python commonsense_evaluate.py  --model 'Llama-3.2-3B-Instruct' --adapter LoRA --dataset piqa --base_model '/home2/models/Llama-3.2-3B-Instruct-Sparse-0.33/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-3B-lora'  --batch_size 16
+
+CUDA_VISIBLE_DEVICES=0 python commonsense_evaluate.py  --model 'Llama-3.2-3B-Instruct' --adapter LoRA --dataset social_i_qa --base_model '/home/models/Llama-3.2-3B-Instruct-Sparse-0.33/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-3B-lora'  --batch_size 16
+
+CUDA_VISIBLE_DEVICES=1 python commonsense_evaluate.py  --model 'Llama-3.2-3B-Instruct' --adapter LoRA --dataset hellaswag --base_model '/home/models/Llama-3.2-3B-Instruct-Sparse-0.33/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-3B-lora'  --batch_size 16
+
+CUDA_VISIBLE_DEVICES=0,1 python commonsense_evaluate.py  --model 'Llama-3.2-3B-Instruct' --adapter LoRA --dataset winogrande --base_model '/home/models/Llama-3.2-3B-Instruct-Sparse-0.33/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-3B-lora'  --batch_size 16
+
+CUDA_VISIBLE_DEVICES=0,1 python commonsense_evaluate.py  --model 'Llama-3.2-3B-Instruct' --adapter LoRA --dataset ARC-Challenge --base_model '/home/models/Llama-3.2-3B-Instruct-Sparse-0.33/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-3B-lora'  --batch_size 16
+
+CUDA_VISIBLE_DEVICES=3 python commonsense_evaluate.py  --model 'Llama-3.2-3B-Instruct' --adapter LoRA --dataset openbookqa --base_model '/home/models/Llama-3.2-3B-Instruct-Sparse-0.33/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-3B-lora'  --batch_size 16
+
+CUDA_VISIBLE_DEVICES=2 python commonsense_evaluate.py  --model 'Llama-3.2-3B-Instruct' --adapter LoRA --dataset ARC-Easy --base_model '/home/models/Llama-3.2-3B-Instruct-Sparse-0.33/' --lora_weights '/home/aneek/LLM-Adapters/trained_models/instruct/llama-commonsense_170k-3B-lora'  --batch_size 16
+
+
+----------------------------------------------------------------------------------------------------------------------------------------
+
+
+/home2/palash/aneek/LLM-Adapters/trained_models/instruct_sparse/llama-commonsense_170k-3B-sparse-lora
+
+
+`````
+
+Math: ['AddSub', 'MultiArith', 'SingleEq', 'gsm8k', 'AQuA', 'SVAMP'] -- Math_14k -- /home2/palash/aneek/LLM-Adapters/trained_models/al-math14k-3B-rand50/round_0
+
+/home2/palash/aneek/LLM-Adapters/trained_models/al-math14k-3B-sparse-rand50/round_0
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-4-Scout-17B-16E-Instruct' --adapter LoRA --dataset gsm8k --base_model '/home/models/Llama-4-Scout-17B-16E-Instruct' --lora_weight
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset AddSub --base_model '/home2/models/Llama-3.2-1B-Instruct/' --lora_weights '/home2/palash/aneek/LLM-Adapters/trained_models/al-math14k-1B-heur50/round_2'
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset MultiArith --base_model '/home2/models/Llama-3.2-1B-Instruct/' --lora_weights '/home2/palash/aneek/LLM-Adapters/trained_models/al-math14k-1B-heur50/round_2'
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset SingleEq --base_model '/home2/models/Llama-3.2-1B-Instruct/' --lora_weights '/home2/palash/aneek/LLM-Adapters/trained_models/al-math14k-1B-heur50/round_2'
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset AQuA --base_model '/home2/models/Llama-3.2-1B-Instruct/' --lora_weights '/home2/palash/aneek/LLM-Adapters/trained_models/al-math14k-1B-heur50/round_2'
+
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-3B-Instruct-Sparse' --adapter LoRA --dataset SVAMP --base_model '/home2/models/Llama-3.2-3B-Instruct-Sparse-0.33/' --lora_weights '/home2/palash/aneek/LLM-Adapters/trained_models/al-math14k-3B-Sparse-heur50/round_2'
+
+
+run for 10% random split: Llama-3.2-1B-Instruct 
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset gsm8k --base_model '/home2/models/Llama-3.2-1B-Instruct/' --lora_weights '/home2/palash/aneek/LLM-Adapters/trained_models/instruction_new_14k/al-math14k-1B-rand50_10/round_0'
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset AddSub --base_model '/home2/models/Llama-3.2-1B-Instruct/' --lora_weights '/home2/palash/aneek/LLM-Adapters/trained_models/instruction_new_14k/al-math14k-1B-rand50_10/round_0'
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset MultiArith --base_model '/home2/models/Llama-3.2-1B-Instruct/' --lora_weights '/home2/palash/aneek/LLM-Adapters/trained_models/instruction_new_14k/al-math14k-1B-rand50_10/round_0'
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset SingleEq --base_model '/home2/models/Llama-3.2-1B-Instruct/' --lora_weights '/home2/palash/aneek/LLM-Adapters/trained_models/instruction_new_14k/al-math14k-1B-rand50_10/round_0'
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset AQuA --base_model '/home2/models/Llama-3.2-1B-Instruct/' --lora_weights '/home2/palash/aneek/LLM-Adapters/trained_models/instruction_new_14k/al-math14k-1B-rand50_10/round_0'
+
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset SVAMP --base_model '/home2/models/Llama-3.2-1B-Instruct/' --lora_weights '/home2/palash/aneek/LLM-Adapters/trained_models/instruction_new_14k/al-math14k-1B-rand50_10/round_0'
+
+
+['AddSub', 'MultiArith', 'SingleEq', 'gsm8k', 'AQuA', 'SVAMP']
+
+
+CUDA_VISIBLE_DEVICES=1  python /home/aneek/LLM-Adapters/eval_llm.py \
+  --dataset AQuA \
+  --model Qwen3-4B-Instruct \
+  --base_model "/home/models/Qwen/Qwen3-4B-Instruct-2507" \
+  --adapter LoRA \
+  --lora_weights ./trained_models/Qwen3/Qwen3-4B-Math14k-rnd50 \
+  --batch_size_gen 16 \
+  --tp_size 1 \
+  --max_model_len 8192 \
+  --gpu_mem_util 0.45
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+  --output_dir ./trained_models/Qwen3_Sparse/Qwen3-8B-Sparse-0.20-Math-14k \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.20-Math-14k
+
+  WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 python  finetune.py   --base_model  "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+  --output_dir ./trained_models/Qwen3_Sparse/Qwen3-8B-Sparse-0.25-Math-14k \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.25-Math-14k
+
+  WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 python  finetune.py   --base_model  "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+  --output_dir ./trained_models/Qwen3_Sparse/Qwen3-8B-Sparse-0.33-Math-14k \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.33-Math-14k
+
+  WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+  --output_dir ./trained_models/Qwen3_Sparse/Qwen3-8B-Sparse-0.20-Math-14k \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.20-Math-14k
+
+====================================================================================================================================
+
+For Ensemble Data split the data into 20% / 20% / 20% / 20% / 20%  -- run the 100% / 50% rand / 50% active learning
+
+part1/part2/part3/part4/part5
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part1_of_5.json \
+  --output_dir ./trained_models/Qwen3_Sparse_Ensemble_Split20/Qwen3-8B-Sparse-0.20-Math14k-part1 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.20-Math14k-part1
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part2_of_5.json \
+  --output_dir ./trained_models/Qwen3_Sparse_Ensemble_Split20/Qwen3-8B-Sparse-0.20-Math14k-part2 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.20-Math14k-part2
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part3_of_5.json \
+  --output_dir ./trained_models/Qwen3_Sparse_Ensemble_Split20/Qwen3-8B-Sparse-0.20-Math14k-part3 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.20-Math14k-part3
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part4_of_5.json \
+  --output_dir ./trained_models/Qwen3_Sparse_Ensemble_Split20/Qwen3-8B-Sparse-0.20-Math14k-part4 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.20-Math14k-part4
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part5_of_5.json \
+  --output_dir ./trained_models/Qwen3_Sparse_Ensemble_Split20/Qwen3-8B-Sparse-0.20-Math14k-part5 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.20-Math14k-part5
+
+==========================================================================================================================
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3201 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part1_of_5.json   \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-20/Qwen3-8B-Sparse-0.20-Math14k-part1-rand50 \
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3202 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part2_of_5.json   \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-20/Qwen3-8B-Sparse-0.20-Math14k-part2-rand50 \
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3203 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part3_of_5.json   \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-20/Qwen3-8B-Sparse-0.20-Math14k-part3-rand50 \
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3204 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part4_of_5.json   \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-20/Qwen3-8B-Sparse-0.20-Math14k-part4-rand50 \
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3205 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part5_of_5.json   \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-20/Qwen3-8B-Sparse-0.20-Math14k-part5-rand50 \
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+=========================================================================================================================
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3201 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part1_of_5.json   \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-20/Qwen3-8B-Sparse-0.20-Math14k-part1-al50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 
+
+
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3202 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part2_of_5.json   \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-20/Qwen3-8B-Sparse-0.20-Math14k-part2-al50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 
+
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3203 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part3_of_5.json   \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-20/Qwen3-8B-Sparse-0.20-Math14k-part3-al50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3204 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part4_of_5.json   \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-20/Qwen3-8B-Sparse-0.20-Math14k-part4-al50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3205 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part5_of_5.json   \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-20/Qwen3-8B-Sparse-0.20-Math14k-part5-al50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 
+
+
+=========================================================================================================================
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3210 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part1_of_4.json  \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-25/Qwen3-8B-Sparse-0.25-Math14k-part1-al50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 
+
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3202 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part2_of_4.json  \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-25/Qwen3-8B-Sparse-0.25-Math14k-part2-al50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3203 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part3_of_4.json  \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-25/Qwen3-8B-Sparse-0.25-Math14k-part3-al50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3204 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part4_of_4.json  \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-25/Qwen3-8B-Sparse-0.25-Math14k-part4-al50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 
+
+
+
+
+------------------------------------------------------------------------------------------------------------
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=2 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3201 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+    --output_dir ./trained_models/Qwen3_Sparse/Qwen3-8B-Sparse-0.25-Math14k-rand50\
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=2 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3202 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+    --output_dir ./trained_models/Qwen3_Sparse/Qwen3-8B-Sparse-0.33-Math14k-rand50\
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1 
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=2 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3203 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.50" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+    --output_dir ./trained_models/Qwen3_Sparse/Qwen3-8B-Sparse-0.50-Math14k-rand50\
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1 \
+    --wandb_run_name Qwen3-8B-Sparse-0.50-Math14k-rand50
+
+=============================================================================================================
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3209 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+    --output_dir ./trained_models/Qwen3_Sparse/Qwen3-8B-Sparse-0.20-Math14k-al50\
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 \
+    --wandb_run_name Qwen3-8B-Sparse-0.50-Math14k-al50
+
+    WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3200 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+    --output_dir ./trained_models/Qwen3_Sparse/Qwen3-8B-Sparse-0.25-Math14k-al50\
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 \
+    --wandb_run_name Qwen3-8B-Sparse-0.50-Math14k-al50
+
+    WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=2 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3203 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+    --output_dir ./trained_models/Qwen3_Sparse/Qwen3-8B-Sparse-0.33-Math14k-al50\
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 \
+    --wandb_run_name Qwen3-8B-Sparse-0.50-Math14k-al50
+
+WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,2 python active_learning.py     --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33"     --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json     --output_dir ./trained_models/Qwen3_Sparse/Qwen3-8B-Sparse-0.33-Math14k-al50    --rounds 3     --init_frac 0.1     --acq_frac 0.2     --wandb_run_name Qwen3-8B-Sparse-0.33-Math14k-al50
+
+Qwen3-8B-Sparse-0.20-Math14k-part1-al50
+ CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=29515 active_learning.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33"   --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json   --output_dir ./trained_models/Qwen3_Sparse/Qwen3-8B-Sparse-0.33-Math14k-al50   --rounds 3   --init_frac 0.1   --acq_frac 0.2   --wandb_run_name Qwen3-8B-Sparse-0.33-Math14k-al50
+
+    WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3203 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+    --output_dir ./trained_models/Qwen3_Sparse/Qwen3-8B-Sparse-0.20-Math14k-al50\
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 \
+    --wandb_run_name Qwen3-8B-Sparse-0.50-Math14k-al50
+
+=============================================================================================================
+
+For Ensemble Data split the data into 20% / 20% / 20% / 20% / 20%  -- run the 100% / 50% rand / 50% active learning
+part1/part2/part3/part4/part5
+
+
+For Ensemble Data split the data into 25% / 25% / 25%/ 25% -- run the 100% / 50% rand / 50% active learning
+part1/part2/part3/part4
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3201 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part1_of_4.json \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-25/Qwen3-8B-Sparse-0.25-Math14k-part1-rand50\
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3202 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part2_of_4.json \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-25/Qwen3-8B-Sparse-0.25-Math14k-part2-rand50\
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3203 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part3_of_4.json \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-25/Qwen3-8B-Sparse-0.25-Math14k-part3-rand50\
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+
+    WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3204 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part4_of_4.json \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-25/Qwen3-8B-Sparse-0.25-Math14k-part4-rand50\
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+/home/aneek/LLM-Adapters/trained_models/Qwen3_Sparse-Ensemble-Split-20
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part1_of_4.json \
+  --output_dir ./trained_models/Qwen3_Sparse_Ensemble_Split25/Qwen3-8B-Sparse-0.25-Math14k-part1 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.25-Math14k-part1
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part2_of_4.json \
+  --output_dir ./trained_models/Qwen3_Sparse_Ensemble_Split25/Qwen3-8B-Sparse-0.25-Math14k-part2 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.25-Math14k-part2
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part3_of_4.json \
+  --output_dir ./trained_models/Qwen3_Sparse_Ensemble_Split25/Qwen3-8B-Sparse-0.25-Math14k-part3 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.25-Math14k-part3
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part4_of_4.json \
+  --output_dir ./trained_models/Qwen3_Sparse_Ensemble_Split25/Qwen3-8B-Sparse-0.25-Math14k-part4 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.25-Math14k-part4
+
+
+
+For Ensemble Data split the data into 33% / 33% / 33%  -- run the 100% / 50% rand / 50% active learning
+
+part1/part2/part3
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3301 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_33/math_14k_part1_of_3.json \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-33/Qwen3-8B-Sparse-0.33-Math14k-part1-rand50 \
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3302 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_33/math_14k_part2_of_3.json \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-33/Qwen3-8B-Sparse-0.33-Math14k-part2-rand50 \
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3303 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_33/math_14k_part3_of_3.json \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-33/Qwen3-8B-Sparse-0.33-Math14k-part3-rand50 \
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+
+part1/part2/part3
+
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3301 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_33/math_14k_part1_of_3.json \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-33/Qwen3-8B-Sparse-0.33-Math14k-part1-al50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 \
+    --wandb_run_name Qwen3-8B-Sparse-0.33-Math14k-part1-al50
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3302 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_33/math_14k_part2_of_3.json \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-33/Qwen3-8B-Sparse-0.33-Math14k-part2-al50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 \
+    --wandb_run_name Qwen3-8B-Sparse-0.33-Math14k-part2-al50
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3303 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_33/math_14k_part3_of_3.json \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-33/Qwen3-8B-Sparse-0.33-Math14k-part3-al50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 \
+    --wandb_run_name Qwen3-8B-Sparse-0.33-Math14k-part3-al50
+
+=============================================================================================================
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3401 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.50"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_50/math_14k_part1_of_2.json\
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-50/Qwen3-8B-Sparse-0.50-Math14k-part1-rand50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 \
+    --wandb_run_name Qwen3-8B-Sparse-0.50-Math14k-part1-al50
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3402 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.50"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_50/math_14k_part2_of_2.json \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-50/Qwen3-8B-Sparse-0.50-Math14k-part2-rand50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 \
+    --wandb_run_name Qwen3-8B-Sparse-0.50-Math14k-part2-al50
+
+
+
+
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_33/math_14k_part1_of_3.json \
+  --output_dir ./trained_models/Qwen3_Sparse_Ensemble_Split33/Qwen3-8B-Sparse-0.33-Math14k-part1 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.33-Math14k-part1
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_33/math_14k_part2_of_3.json \
+  --output_dir ./trained_models/Qwen3_Sparse_Ensemble_Split33/Qwen3-8B-Sparse-0.33-Math14k-part2 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.33-Math14k-part2
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_33/math_14k_part3_of_3.json \
+  --output_dir ./trained_models/Qwen3_Sparse_Ensemble_Split33/Qwen3-8B-Sparse-0.33-Math14k-part3 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.33-Math14k-part3
+
+For Ensemble Data split the data into 50% / 50%   -- run the 100% / 50% rand / 50% active learning
+
+part1/part2
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3401 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.50"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_50/math_14k_part1_of_2.json\
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-50/Qwen3-8B-Sparse-0.50-Math14k-part1-rand50 \
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3402 active_learning.py \
+    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.50"  \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_50/math_14k_part2_of_2.json \
+    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-50/Qwen3-8B-Sparse-0.50-Math14k-part2-rand50 \
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.50" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_50/math_14k_part1_of_2.json \
+  --output_dir ./trained_models/Qwen3_Sparse_Ensemble_Split50/Qwen3-8B-Sparse-0.50-Math14k-part1 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.50-Math14k-part1
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.50" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_50/math_14k_part2_of_2.json \
+  --output_dir ./trained_models/Qwen3_Sparse_Ensemble_Split50/Qwen3-8B-Sparse-0.50-Math14k-part2 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name Qwen3-8B-Sparse-0.50-Math14k-part2
+
+
+=============================================================================================================
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=2 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3200 active_learning.py \
+    --base_model /home/models/Qwen/Qwen3-8B/ \
+    --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+    --output_dir ./trained_models/Qwen3/Qwen3-8B-Math14k-rand50\
+    --rounds 1 \
+    --init_frac 0.5 \
+    --acq_frac 0.1
+
+
+
+  "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20"
+  "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.25"
+  "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.33"
+  "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.50"
+
+  
+['AddSub', 'MultiArith', 'SingleEq', 'gsm8k', 'AQuA', 'SVAMP']
+  CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 python /home/aneek/LLM-Adapters/eval_llm.py \
+  --dataset gsm8k \
+  --model Llama-3.2-3B-Instruct-0.33-Wanda \
+  --base_model /home/models/Llama-3.2-3B-Instruct-0.33-Wanda \
+  --adapter LoRA \
+  --lora_weights /home/aneek/LLM-Adapters/trained_models/instruct_3B/llama-math-14k-3B-Wanda-lora-ep3 \
+  --batch_size_gen 16 \
+  --tp_size 1 \
+  --max_model_len 8192 \
+  --gpu_mem_util 0.97
+
+AddSub,MultiArith,SingleEq,gsm8k,AQuA,SVAMP
+
+   CUDA_VISIBLE_DEVICES=1,2 PYTHONNOUSERSITE=1 "$CONDA_PREFIX/bin/python" /home/aneek/LLM-Adapters/eval_llm.py   --dataset AddSub   --model Llama-4-Scout-17B-16E-Instruct   --base_model /home/models/Llama-4-Scout-17B-16E-Instruct   --batch_size_gen 8   --tp_size 1   --max_model_len 4096  
+
+
+
+  CUDA_VISIBLE_DEVICES=2,0 PYTHONNOUSERSITE=1 python /home/aneek/LLM-Adapters/eval_llm.py  \
+  --dataset AddSub \
+  --model Llama-3.2-11B-Vision-Instruct \
+  --base_model /home/models/Llama-3.2-11B-Vision-Instruct \
+  --batch_size_gen 4 \
+  --tp_size 2 \
+  --max_model_len 8192 \
+  --gpu_mem_util 0.95 \ 
+
+AddSub,MultiArith,SingleEq,gsm8k,AQuA,SVAMP
+
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+CUDA_VISIBLE_DEVICES=1 \
+PYTHONNOUSERSITE=1 \
+python /home/aneek/LLM-Adapters/eval_llm.py \
+  --dataset SVAMP \
+  --model Llama-3.2-3B-Instruct-0.33-Wanda \
+  --base_model /home/models/Llama-3.2-3B-Instruct-0.33-Wanda/ \
+  --batch_size_gen 16 \
+  --tp_size 1 \
+  --max_model_len 2048 \
+  --gpu_mem_util 0.95
+
+/home/models/Llama-3.1-8B-Instruct-0.33-Wanda
+
+AddSub,MultiArith,SingleEq,gsm8k,AQuA,SVAMP
+
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+CUDA_VISIBLE_DEVICES=2 \
+PYTHONNOUSERSITE=1 \
+python /home/aneek/LLM-Adapters/eval_llm.py \
+  --dataset SVAMP \
+  --model Llama-3.1-8B-Instruct-0.33-Wanda \
+  --base_model /home/models/Llama-3.1-8B-Instruct-0.33-Wanda \
+  --batch_size_gen 16 \
+  --tp_size 1 \
+  --max_model_len 2048 \
+  --gpu_mem_util 0.95
+
+
+===========================================================================
+
+
+/home/aneek/LLM-Adapters/trained_models/al-math14k-3B-heur50/round_2
+CUDA_VISIBLE_DEVICES=2 \
+PYTHONNOUSERSITE=1 \
+python /home/aneek/LLM-Adapters/eval_llm.py \
+  --dataset SVAMP \
+  --model Llama-3.2-3B-Instruct \
+  --base_model /home/models/Llama-3.2-3B-Instruct \
+  --batch_size_gen 16 \
+  --lora_weights '/home/aneek/LLM-Adapters/trained_models/al-math14k-3B-heur50/round_2'
+  --tp_size 1 \
+  --max_model_len 2048 \
+  --gpu_mem_util 0.95
+
+
+
+/home/aneek/LLM-Adapters/trained_models/al-math14k-3B-sparse-heur50/round_2
+
+CUDA_VISIBLE_DEVICES=1 \
+PYTHONNOUSERSITE=1 \
+python /home/aneek/LLM-Adapters/eval_llm.py \
+  --dataset SVAMP \
+  --model Llama-3.2-3B-Instruct-Sparse \
+  --base_model /home/models/Llama-3.2-3B-Instruct-Sparse-0.33 \
+  --batch_size_gen 16 \
+  --lora_weights '/home/aneek/LLM-Adapters/trained_models/al-math14k-3B-heur50/round_2'
+  --tp_size 1 \
+  --max_model_len 2048 \
+  --gpu_mem_util 0.95
+
+
+
+
+accelerate launch --config_file accelerate_gpus_0_2.yaml eval_llm.py \
+    --dataset AddSub \
+  --model Llama-3.1-8B-Instruct \
+  --base_model /home/models/Llama-3.1-8B-Instruct \
+  --batch_size_gen 16 \
+  --tp_size 1 \
+  --max_model_len 8192 \
+  --gpu_mem_util 0.95 \
+  --max_model_len 2048
+
+
+AddSub,MultiArith,SingleEq,gsm8k,AQuA,SVAMP
+
+CUDA_VISIBLE_DEVICES=1 python /home/aneek/LLM-Adapters/eval_vllm_ensemble_math.py\
+  --dataset SVAMP \
+  --model Llama-3.2-3B-Instruct-Sparse \
+  --base_model /home/models/Llama-3.2-3B-Instruct-Sparse-0.33 \
+  --lora_weights "part1=/home/aneek/LLM-Adapters/trained_models/instruct_al_3B_ens50/ensA_part1/round_2,part2=/home/aneek/LLM-Adapters/trained_models/instruct_al_3B_ens50/ensB_part2/round_2,part3=/home/aneek/LLM-Adapters/trained_models/instruct_al_3B_ens50/ensC_part3/round_2" \
+  --batch_size 16 \
+  --tp_size 1 \
+  --gpu_memory_utilization 0.95 \
+  --max_loras 3 --max_cpu_loras 3 --max_lora_rank 32 \
+  --preload --preload_gpu_keep 2
+
+['AddSub', 'MultiArith', 'SingleEq', 'gsm8k', 'AQuA', 'SVAMP']
+  CUDA_VISIBLE_DEVICES=0 python /home/aneek/LLM-Adapters/eval_vllm_ensemble_math.py  --dataset SVAMP   --model Llama-3.2-1B-Instruct   --base_model /home/models/Llama-3.2-1B-Instruct/   --lora_weights "part1=/home/aneek/LLM-Adapters/trained_models/instruct_new/llama-math-14k-part1-1B-lora,part2=/home/aneek/LLM-Adapters/trained_models/instruct_new/llama-math-14k-part2-1B-lora,part3=/home/aneek/LLM-Adapters/trained_models/instruct_new/llama-math-14k-part3-1B-lora"   --batch_size 16   --tp_size 1   --gpu_memory_utilization 0.95   --max_loras 3 --max_cpu_loras 3 --max_lora_rank 32 
+
+
+CUDA_VISIBLE_DEVICES=1 \
+python /home/aneek/LLM-Adapters/eval_vllm_ensemble.py \
+  --dataset gsm8k \
+  --models /home/models/Llama-3.2-1B-Instruct,/home/models/Llama-3.2-3B-Instruct,/home/models/Llama-3.2-1B-Instruct \
+  --batch_size 16 \
+  --tp_size 1 \
+  --gpu_memory_utilization 0.95 \
+  --ensemble_rule vote
+
+  CUDA_VISIBLE_DEVICES=1 python /home/aneek/LLM-Adapters/eval_vllm_ensemble.py   --dataset SVAMP   --models /home/models/Llama-3.2-3B-Instruct-Sparse-0.33,/home/models/Llama-3.2-3B-Instruct-Sparse-0.33,/home/models/Llama-3.2-3B-Instruct-Sparse-0.33   --batch_size 16   --tp_size 1   --gpu_memory_utilization 0.95   --ensemble_rule vote
+
+['AddSub', 'MultiArith', 'SingleEq', 'gsm8k', 'AQuA', 'SVAMP']
+
+CUDA_VISIBLE_DEVICES=2 \
+python radial_router_3models.py \
+  --dataset gsm8k \
+  --models /home/models/Llama-3.2-1B-Instruct,/home/models/Llama-3.2-1B-Instruct,/home/models/Llama-3.2-1B-Instruct \
+  --alpha 0.02 \
+  --batch_size 16 --tp_size 1 --gpu_memory_utilization 0.95 \
+  --router_epochs 30 --router_batch 64 --contrastive_lambda 0.5
+
+CUDA_VISIBLE_DEVICES=0,2 python eval_text_baseline.py \
+  --dataset AddSub \
+  --model Llama-3.2-11B-Vision-Instruct \
+  --base_model /home/models/Llama-3.2-11B-TextOnly \
+  --tp_size 2 \
+  --batch_size_gen 4 \
+  --gpu_mem_util 0.9 \
+  --max_model_len 8192 \
+  --dtype auto
+
+python -c 'from transformers import AutoTokenizer, AutoModelForCausalLM; m=AutoModelForCausalLM.from_pretrained("/home/models/Llama-3.2-1B-Instruct", torch_dtype="auto").cuda(); t=AutoTokenizer.from_pretrained("/home/models/Llama-3.2-1B-Instruct"); i=t("Q: What is 4 + 5?\nA:", return_tensors="pt").to("cuda"); print(t.decode(m.generate(**i, max_new_tokens=10, pad_token_id=t.eos_token_id)[0]))'
+
+
+1. Run the ensemble code without any pre-training difference.
+2. Check for different ensemble.
+3. Run Wanda / PruneNet 
+
+
+CUDA_VISIBLE_DEVICES=2 python convert_mllama_to_llama_text_gpu.py   --src /home/models/Llama-3.2-11B-Vision-Instruct   --dst /home/models/Llama-3.2-11B-TextOnly   --dtype float16   --device cuda:0
+
+
+(sparsegpt) aneek@LCS2-IITD:~/LLM-Adapters$ python split_math14k.py \                                                                                   
+  --src /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \                                                                                        
+  --outdir /home/aneek/LLM-Adapters/ft-training_set/split_20/ \                                                                                         
+  --parts 5 \                                                                                                                                           
+  --seed 42                                                                                                                                             
+[✓] wrote   2785 examples → /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part1_of_5.json                                                  
+[✓] wrote   2784 examples → /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part2_of_5.json                                                  
+[✓] wrote   2784 examples → /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part3_of_5.json                                                  
+[✓] wrote   2784 examples → /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part4_of_5.json                                                  
+[✓] wrote   2784 examples → /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part5_of_5.json                                                  
+(sparsegpt) aneek@LCS2-IITD:~/LLM-Adapters$ python split_math14k.py \                                                                                   
+  --src /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \                                                                                        
+  --outdir /home/aneek/LLM-Adapters/ft-training_set/split_25/ \                                                                                         
+  --parts 4 \                                                                                                                                           
+  --seed 42                                                                                                                                             
+[✓] wrote   3481 examples → /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part1_of_4.json                                                  
+[✓] wrote   3480 examples → /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part2_of_4.json                                                  
+[✓] wrote   3480 examples → /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part3_of_4.json                                                  
+[✓] wrote   3480 examples → /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part4_of_4.json                                                  
+(sparsegpt) aneek@LCS2-IITD:~/LLM-Adapters$ python split_math14k.py \                                                                                   
+  --src /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \                
+  --outdir /home/aneek/LLM-Adapters/ft-training_set/split_33/ \                                                                                         
+  --parts 3 \
+  --seed 42
+[✓] wrote   4641 examples → /home/aneek/LLM-Adapters/ft-training_set/split_33/math_14k_part1_of_3.json                                                  
+[✓] wrote   4640 examples → /home/aneek/LLM-Adapters/ft-training_set/split_33/math_14k_part2_of_3.json                                                  
+[✓] wrote   4640 examples → /home/aneek/LLM-Adapters/ft-training_set/split_33/math_14k_part3_of_3.json                                                  
+(sparsegpt) aneek@LCS2-IITD:~/LLM-Adapters$ python split_math14k.py \                                                                                   
+  --src /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \                                                                                        
+  --outdir /home/aneek/LLM-Adapters/ft-training_set/split_50/ \                                                                                         
+  --parts 2 \
+  --seed 42
+[✓] wrote   6961 examples → /home/aneek/LLM-Adapters/ft-training_set/split_50/math_14k_part1_of_2.json                                                  
+[✓] wrote   6960 examples → /home/aneek/LLM-Adapters/ft-training_set/split_50/math_14k_part2_of_2.json   
+````
+
+
+
+CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=0 \
+python active_learning.py \
+  --base_model "/home/models/Qwen/Qwen3-4B-Instruct-2507" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+  --output_dir ./trained_models/Qwen3_Ensemble/Qwen3-4B-2507-Math14k-al50 \
+  --rounds 3 --init_frac 0.1 --acq_frac 0.2 \
+  --uncertainty logppl --cutoff_len 256 --scoring_batch_size 8 \
+  --num_epochs 3 --learning_rate 3e-5 \
+  --per_device_train_batch_size 4 --micro_batch_size 1 --val_set_size 120
+
+
+CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=0 \
+python active_learning.py \
+  --base_model "/home/models/Qwen/Qwen3-4B-Instruct-2507" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json \
+  --output_dir ./trained_models/Qwen3_Ensemble/Qwen3-4B-2507-Math14k-rand50 \
+  --rounds 1 --init_frac 0.5 --acq_frac 0.1 \
+  --uncertainty logppl --cutoff_len 256 --scoring_batch_size 8 \
+  --num_epochs 3 --learning_rate 3e-5 \
+  --per_device_train_batch_size 4 --micro_batch_size 1 --val_set_size 120
+
+
+PART=N  # e.g., 3
+CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=0 \
+python active_learning.py \
+  --base_model "/home/models/Qwen/Qwen3-4B-Instruct-2507" \
+  --data_path "/home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part${PART}_of_4.json" \
+  --output_dir "./trained_models/Qwen3_Ensemble_Split25/Qwen3-4B-2507-Math14k-part${PART}-al50" \
+  --rounds 3 --init_frac 0.1 --acq_frac 0.2 \
+  --uncertainty logppl --cutoff_len 256 --scoring_batch_size 8 \
+  --num_epochs 3 --learning_rate 3e-5 \
+  --per_device_train_batch_size 4 --micro_batch_size 1 --val_set_size 120
+
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \ 
+CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 python /home/aneek/LLM-Adapters/active_learning_nop_bbl.py --base_model /home/models/nvidia/OpenReasoning-Nemotron-14B --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json --output_dir /home/aneek/LLM-Adapters/trained_models/Nemotron//OpenReasoning-Nemotron-14B-Math14k/OpenReasoning-Nemotron-14B-al50 --rounds 3 --init_frac 0.1 --acq_frac 0.2 --uncertainty logppl --cutoff_len 256 --scoring_batch_size 8 --num_epochs 3 --learning_rate 3e-5 --per_device_train_batch_size 4 --micro_batch_size 1 --val_set_size 120 --wandb_run_name AL-al50-OpenReasoning-Nemotron-14B-Math14k
+
