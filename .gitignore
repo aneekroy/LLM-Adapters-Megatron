@@ -19,3 +19,14 @@ trained_models/
 *.synced
 *.snapshot
 *.yaml
+*.safetensors
+*.pt
+*.pth
+*.bin
+*.ckpt
+checkpoints/
+models/
+runs/
+datasets/
+# media
+picture.jpg
