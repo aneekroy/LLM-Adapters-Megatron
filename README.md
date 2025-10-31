@@ -87,7 +87,7 @@ WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 --master_port=
   --val_set_size 120 \
   --adapter_name lora
 
-  WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=3193 finetune.py   --base_model '/home/models/Llama-3.3-70B-Instruct'   --data_path '/home/aneek/LLM-Adapters/ft-training_set/dataset/combined/train.json'   --output_dir './trained_models/instruction/llama-3.3-70B-combined-lora'   --batch_size 16   --micro_batch_size 4   --num_epochs 3   --learning_rate 3e-4   --cutoff_len 256   --val_set_size 120   --adapter_name lora
+  WORLD_SIZE=2 CUDA_VISIBLE_DEVICES=2,0 torchrun --nproc_per_node=1 --master_port=3193 finetune.py   --base_model '/home/models/Llama-3.3-70B-Instruct'   --data_path '/home/aneek/LLM-Adapters/ft-training_set/dataset/combined/train.json'   --output_dir './trained_models/instruction/llama-3.3-70B-combined-lora'   --batch_size 16   --micro_batch_size 4   --num_epochs 3   --learning_rate 3e-4   --cutoff_len 256   --val_set_size 120   --adapter_name lora
 
 
   WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=3192 finetune.py   --base_model '/home/models/Llama-3.2-11B-Vision-Instruct'   --data_path '/home/aneek/LLM-Adapters/ft-training_set/dataset/combined/train_combined.json'   --output_dir './trained_models/vision_11b/llama-11B-combined-lora'   --batch_size 16   --micro_batch_size 4   --num_epochs 3   --learning_rate 3e-4   --cutoff_len 256   --val_set_size 120   --adapter_name lora
@@ -217,10 +217,10 @@ The `math_10k.json` data is collected with the training sets of GSM8K, MAWPS, an
 Example usage for Single GPUs:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python finetune.py \
-  --base_model 'yahma/llama-7b-hf' \
-  --data_path 'math_10k.json' \
-  --output_dir './trained_models/llama-lora' \
+CUDA_VISIBLE_DEVICES=2 python /home/aneek/LLM-Adapters/finetune.py \
+  --base_model /home/models/nvidia-sparse/OpenReasoning-Nemotron-14B-Sparse-0.67 \
+  --data_path '/home/aneek/LLM-Adapters/ft-training_set/math_14k.json' \
+  --output_dir './trained_models/OpenReasoning-Nemotron-14B-Sparse-Ensemble_fullMath14k/OpenReasoning-Nemotron-14B-Sparse-0.67-Math14k-fullFT' \
   --batch_size 16 \
   --micro_batch_size 4 \
   --num_epochs 3 \
@@ -229,6 +229,13 @@ CUDA_VISIBLE_DEVICES=0 python finetune.py \
   --val_set_size 120 \
   --adapter_name lora
 ```
+
+
+ python /home/aneek/LLM-Adapters/finetune.py   --base_model "/home/models/nvidia-sparse/OpenReasoning-Nemotron-14B-Sparse-0.67"   --data_path "/home/aneek/LLM-Adapters/ft-training_set/math_14k.json"   --output_dir "./trained_models/OpenReasoning-Nemotron-14B-Sparse-Ensemble_fullMath14k/OpenReasoning-Nemotron-14B-Sparse-0.67-Math14k-fullFT"   --batch_size 1   --micro_batch_size 1   --num_epochs 3   --learning_rate 3e-5   --cutoff_len 64   --val_set_size 120   --bf16   --gradient_checkpointing
+
+
+
+/home/aneek/LLM-Adapters/finetune.py --base_model /home/models/nvidia-sparse/OpenReasoning-Nemotron-14B-Sparse-0.33 --data_path /home/aneek/LLM-Adapters/ft-training_set/split_33/math_14k_part3_of_3.json --output_dir /home/aneek/LLM-Adapters/trained_models/OpenReasoning-Nemotron-14B-Sparse-0.33-Ensemble_split_33/OpenReasoning-Nemotron-14B-Sparse-0.33-Math14k-part3 --batch_size 4 --micro_batch_size 1 --num_epochs 3 --learning_rate 3e-5 --cutoff_len 256 --val_set_size 120 --wandb_run_name FT-OpenReasoning-Nemotron-14B-Sparse-0.33-split_33-part3
 
 Moreover, you can use `--use_gradient_checkpointing` to save more GPU memory, but it will increase the training time.
 
@@ -554,8 +561,8 @@ CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-1B-Instruct' --ada
 ['AddSub', 'MultiArith', 'SingleEq', 'gsm8k', 'AQuA', 'SVAMP']
 
 
-CUDA_VISIBLE_DEVICES=1  python /home/aneek/LLM-Adapters/eval_llm.py \
-  --dataset AQuA \
+CUDA_VISIBLE_DEVICES=1  python /home/aneek/LLM-Adapters/new_eval_llm.py \
+  --dataset gsm8k \
   --model Qwen3-4B-Instruct \
   --base_model "/home/models/Qwen/Qwen3-4B-Instruct-2507" \
   --adapter LoRA \
@@ -563,7 +570,32 @@ CUDA_VISIBLE_DEVICES=1  python /home/aneek/LLM-Adapters/eval_llm.py \
   --batch_size_gen 16 \
   --tp_size 1 \
   --max_model_len 8192 \
+  --gpu_mem_util 0.95
+
+CUDA_VISIBLE_DEVICES=0  python /home/aneek/LLM-Adapters/evaluate.py \
+  --dataset gsm8k \
+  --model Qwen3-4B-Instruct \
+  --base_model "/home/models/Qwen/Qwen3-4B-Instruct-2507" \
+  --adapter LoRA \
+  --lora_weights /home/aneek/LLM-Adapters/trained_models/Qwen3/Qwen3-4B-Math-14k\
+  --batch_size_gen 16 \
+  --tp_size 1 \
+  --max_model_len 8192 \
   --gpu_mem_util 0.45
+
+python - <<'PY'
+from eval_llm import merge_lora
+merge_lora(
+  "/home/models/Qwen/Qwen3-4B-Instruct-2507",
+  "/home/aneek/LLM-Adapters/trained_models/Qwen3/Qwen3-4B-Math-14k",
+  "/home/aneek/merged/Qwen3-4B-Math14k-merged"
+)
+PY
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'vllm_eval'
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset SVAMP --base_model '/home2/models/Llama-3.2-1B-Instruct/' --lora_weights '/home2/palash/aneek/LLM-Adapters/trained_models/instruction_new_14k/al-math14k-1B-rand50_10/round_0'
 
 
 WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 python  finetune.py   --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
@@ -1343,3 +1375,64 @@ python active_learning.py \
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \ 
 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 python /home/aneek/LLM-Adapters/active_learning_nop_bbl.py --base_model /home/models/nvidia/OpenReasoning-Nemotron-14B --data_path /home/aneek/LLM-Adapters/ft-training_set/math_14k.json --output_dir /home/aneek/LLM-Adapters/trained_models/Nemotron//OpenReasoning-Nemotron-14B-Math14k/OpenReasoning-Nemotron-14B-al50 --rounds 3 --init_frac 0.1 --acq_frac 0.2 --uncertainty logppl --cutoff_len 256 --scoring_batch_size 8 --num_epochs 3 --learning_rate 3e-5 --per_device_train_batch_size 4 --micro_batch_size 1 --val_set_size 120 --wandb_run_name AL-al50-OpenReasoning-Nemotron-14B-Math14k
 
+
+
+CUDA_VISIBLE_DEVICES=1 python evaluate.py  --model 'Llama-3.2-1B-Instruct' --adapter LoRA --dataset SVAMP --base_model '/home2/models/Llama-3.2-1B-Instruct/' --lora_weights '/home2/palash/aneek/LLM-Adapters/trained_models/instruction_new_14k/al-math14k-1B-rand50_10/round_0'
+
+
+
+CUDA_VISIBLE_DEVICES=1 python /home/aneek/LLM-Adapters/new_eval_llm.py \
+  --dataset gsm8k \
+  --model Qwen3-4B-Instruct \
+  --base_model "/home/models/Qwen/Qwen3-4B-Instruct-2507" \
+  --adapter LoRA \
+  --lora_weights "/home/aneek/LLM-Adapters/trained_models/Qwen3/Qwen3-4B-Math-14k" \
+  --merged_out "/home/aneek/merged/Qwen3-4B-Math14k-merged" \
+  --num_beams 4 --temperature 0.0 --top_p 1.0 --top_k 0 \
+  --batch_size_gen 16 --tp_size 1 --max_model_len 8192 --gpu_mem_util 0.95 \
+  --seed 42 \
+  --wandb_project llm_adapter_eval_math_14k_baseline
+
+
+  CUDA_VISIBLE_DEVICES=1 python /home/aneek/LLM-Adapters/eval_llm.py \
+  --dataset gsm8k \
+  --model Qwen3-4B-Instruct \
+  --base_model "/home/models/Qwen/Qwen3-4B-Instruct-2507" \
+  --adapter LoRA \
+  --lora_weights "/home/aneek/LLM-Adapters/trained_models/Qwen3/Qwen3-4B-Math-14k" \
+  --merged_out "/home/aneek/merged/Qwen3-4B-Math14k-merged" \
+  --num_beams 4 --temperature 0.0 --top_p 1.0 --top_k 0 \
+  --batch_size_gen 16 --tp_size 1 --max_model_len 8192 --gpu_mem_util 0.95 \
+  --seed 42
+
+
+
+  CUDA_VISIBLE_DEVICES=2 python /home/aneek/LLM-Adapters/eval_vllm_ensemble_math_b.py\
+  --dataset gsm8k \
+  --model Qwen3-4B-Instruct \
+  --base_model "/home/models/Qwen/Qwen3-4B-Instruct-2507" \
+  --lora_weights "part1=/home/aneek/LLM-Adapters/trained_models/Qwen3/Qwen3-4B-Math-14k" \
+  --batch_size 16 \
+  --tp_size 1 \
+  --gpu_memory_utilization 0.95 \
+  --max_loras 3 --max_cpu_loras 3 --max_lora_rank 32 
+
+
+
+  1. Visualisation -- 
+  Math (6 tasks) 
+  subplot 6 columns * 3 rows plots for 
+
+  Ensemble line plots -- straight line for baseline for the rest *** 
+
+  Delta in line plots
+  Bar-plots 
+  XG-Boost implementation
+
+  2. Pseudo Code
+
+  3. github 
+
+  4. effective data utilisation for each data training strategy
+
+  

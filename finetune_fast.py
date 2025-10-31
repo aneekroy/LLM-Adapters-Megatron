@@ -1,34 +1,30 @@
+# ========================= finetune.py =========================
+# Fast LoRA finetune with SDPA/FA2, fused AdamW, TF32, presets, and flash_only.
+# ===============================================================
+
+# --- env must be set before importing torch ---
 import os
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")  # CHANGED: no max_split_size_mb
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 import sys
 from typing import List, Optional, Union
-
 import fire
 import torch
 import transformers
 from datasets import load_dataset
 
-# NEW: defensively reduce CUDA fragmentation unless user already set it
-os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True,max_split_size_mb:256")
+torch.cuda.empty_cache()
 
-# Keep tokenizers quiet
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-"""
-Unused imports:
-import torch.nn as nn
-import bitsandbytes as bnb
-"""
-
-# Optional WeightWatcher (now gated to save memory)
+# Optional WeightWatcher (gated)
 try:
-    import weightwatcher as ww  # CHANGED: will only run if enabled
+    import weightwatcher as ww
 except Exception:
     ww = None
 
 # Local PEFT checkout support
 sys.path.append(os.path.join(os.getcwd(), "peft/src/"))
 
-# finetune.py – replace the whole block
 from peft import (   # noqa: E402
     LoraConfig,
     PrefixTuningConfig,
@@ -37,70 +33,93 @@ from peft import (   # noqa: E402
     set_peft_model_state_dict,
 )
 
-# Optional adapters – only available in PEFT ≥ 0.11
 try:
-    from peft import BottleneckConfig        # only needed if --adapter_name bottleneck
+    from peft import BottleneckConfig
 except ImportError:
     BottleneckConfig = None
 
 # Helper for quantised LoRA prep – PEFT keeps renaming/moving it.
-# We attempt several locations and fall back to a no-op.
 try:
     # PEFT ≤ 0.10
     from peft import prepare_model_for_int8_training as prepare_model_for_int8_training
 except ImportError:
     try:
-        # PEFT ≥ 0.11 (sometimes lives under tuners.lora)
+        # PEFT ≥ 0.11
         from peft.tuners.lora import (
             prepare_model_for_kbit_training as prepare_model_for_int8_training
         )
     except ImportError:
         try:
-            # PEFT dev branch (utils)
+            # PEFT dev branch
             from peft.utils.other import (
                 prepare_model_for_kbit_training as prepare_model_for_int8_training
             )
         except ImportError:
             def prepare_model_for_int8_training(model, *args, **kwargs):  # type: ignore
-                """Fallback that does nothing; model remains unchanged."""
                 return model
 
-from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer  # noqa: F402
+from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 
 
+# ---------- Attention backends & TF32 ----------
+# NEW: enable TF32 fast path on A100/90 etc.
+torch.backends.cuda.matmul.allow_tf32 = True
+try:
+    torch.set_float32_matmul_precision("high")
+except Exception:
+    pass
+
+from contextlib import contextmanager
+
+@contextmanager
+def attention_ctx(flash_only: bool):
+    """
+    NEW: Context that forces PyTorch SDPA Flash if `flash_only=True`,
+    otherwise prefers FA2 and falls back gracefully.
+    """
+    try:
+        if flash_only:
+            # Force SDPA flash kernel, disable math/mem_efficient
+            torch.backends.cuda.sdp_kernel(enable_flash=True, enable_math=False, enable_mem_efficient=False)
+        else:
+            # Prefer flash; allow mem_efficient; disable math
+            torch.backends.cuda.sdp_kernel(enable_flash=True, enable_math=False, enable_mem_efficient=True)
+        yield
+    finally:
+        # keep same settings on exit to avoid surprises
+        if flash_only:
+            torch.backends.cuda.sdp_kernel(enable_flash=True, enable_math=False, enable_mem_efficient=False)
+        else:
+            torch.backends.cuda.sdp_kernel(enable_flash=True, enable_math=False, enable_mem_efficient=True)
+
+
+# ---------- Helpers ----------
 def _present(names, model):
     mods = set(dict(model.named_modules()).keys())
     return [n for n in names if any(k.endswith(n) or (("." + n) in k) for k in mods)]
 
 
 def default_lora_targets(model, explicit=None):
-    # explicit wins (CLI or caller-provided list)
     if explicit:
         return _present(explicit, model)
 
     mt = (getattr(model.config, "model_type", "") or "").lower()
-    # Common defaults per family
     families = {
-        # LLaMA / Mistral / Mixtral / Gemma / Qwen(2/3) style (LLaMA-like)
         "llama":   ["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"],
         "mistral": ["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"],
         "mixtral": ["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"],
         "gemma":   ["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"],
         "qwen":    ["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"],
         "qwen3":   ["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"],
-        # OPT-style
         "opt":     ["q_proj","k_proj","v_proj","out_proj","fc1","fc2"],
-        # GPT-NeoX / Falcon
         "gpt_neox":["query_key_value","dense","dense_h_to_4h","dense_4h_to_h"],
         "falcon":  ["query_key_value","dense","dense_h_to_4h","dense_4h_to_h"],
     }
-    # choose by known family else try LLaMA-like first
     guess = families.get(mt, families["llama"])
     chosen = _present(guess, model)
     if chosen:
         return chosen
 
-    # Fallback: any Linear-ish projection modules commonly seen
     heuristic = [
         "q_proj","k_proj","v_proj","o_proj","out_proj",
         "up_proj","down_proj","gate_proj",
@@ -110,37 +129,36 @@ def default_lora_targets(model, explicit=None):
     if chosen:
         return chosen
 
-    # Final safety: scan for any leaf Linear modules; prefer attention/MLP names
     target_names = []
     for name, mod in model.named_modules():
         if isinstance(mod, torch.nn.Linear) and (("attn" in name) or ("mlp" in name) or ("proj" in name)):
             leaf = name.split(".")[-1]
             target_names.append(leaf)
-    return sorted(set(target_names)) or ["q_proj","v_proj","o_proj"]  # last resort
+    return sorted(set(target_names)) or ["q_proj","v_proj","o_proj"]
 
 
-# NEW: util to align LoRA dtype with base model to avoid PEFT up-casts (your OOM site)
+# NEW: align LoRA dtype to base model to avoid hidden casts
 def _align_lora_dtype(model: torch.nn.Module):
     model_dtype = next(p for p in model.parameters() if p.requires_grad).dtype
     for _, m in model.named_modules():
-        # LoRA layers have lora_A/lora_B under adapters
         if hasattr(m, "lora_A") and hasattr(m.lora_A, "default"):
             m.lora_A.default.weight.data = m.lora_A.default.weight.data.to(model_dtype)
         if hasattr(m, "lora_B") and hasattr(m.lora_B, "default"):
             m.lora_B.default.weight.data = m.lora_B.default.weight.data.to(model_dtype)
 
 
-# main training function
+# ======================= TRAIN =======================
 def train(
     # model/data params
-    base_model: str = "",  # the only required argument
+    base_model: str = "",
     data_path: str = "yahma/alpaca-cleaned",
     output_dir: str = "./lora-alpaca",
     adapter_name: str = "lora",
     load_8bit: bool = False,
+
     # training hyperparams
     batch_size: int = 128,
-    micro_batch_size: int = 4,  # CHANGED: recommend 1 on 14B if tight on mem
+    micro_batch_size: int = 4,
     num_epochs: int = 3,
     learning_rate: float = 3e-4,
     cutoff_len: int = 256,
@@ -148,11 +166,13 @@ def train(
     use_gradient_checkpointing: bool = False,
     eval_step: int = 200,
     save_step: int = 200,
+
     # lora hyperparams
     lora_r: int = 8,
     lora_alpha: int = 16,
     lora_dropout: float = 0.05,
     lora_target_modules: List[str] = None,
+
     # bottleneck adapter hyperparams
     bottleneck_size: int = 256,
     non_linearity: str = "tanh",
@@ -161,20 +181,27 @@ def train(
     use_adapterp: bool = False,
     target_modules: List[str] = None,
     scaling: Union[float, str] = 1.0,
+
     # prefix tuning hyperparams
     num_virtual_tokens: int = 30,
+
     # llm hyperparams
-    train_on_inputs: bool = True,  # if False, masks out inputs in loss
-    group_by_length: bool = False,  # faster, but can spike mem peaks
-    # wandb params
+    train_on_inputs: bool = True,
+    group_by_length: bool = False,
+
+    # wandb
     wandb_project: str = "",
     wandb_run_name: str = "",
-    wandb_watch: str = "",  # options: false | gradients | all
-    wandb_log_model: str = "",  # options: false | true
-    resume_from_checkpoint: str = None,  # either training checkpoint or final adapter
+    wandb_watch: str = "",
+    wandb_log_model: str = "",
+    resume_from_checkpoint: str = None,
     enable_weightwatcher: bool = False,
-    # NEW: mem-saver switches
-    restrict_lora_to_attention: bool = True,  # CHANGED: cuts adapter/grad mem
+
+    # NEW: mem/speed knobs
+    restrict_lora_to_attention: bool = True,
+    speed_preset: str = "fast",          # NEW: 'safe' | 'fast' | 'max'
+    log_every: int = 50,                  # NEW
+    flash_only: bool = False,             # NEW: force SDPA-Flash even if FA2 is unavailable
 ):
     print(
         f"Finetuning model with params:\n"
@@ -208,8 +235,11 @@ def train(
         f"wandb_log_model: {wandb_log_model}\n"
         f"resume_from_checkpoint: {resume_from_checkpoint}\n"
         f"restrict_lora_to_attention: {restrict_lora_to_attention}\n"
+        f"speed_preset: {speed_preset}\n"
+        f"log_every: {log_every}\n"
+        f"flash_only: {flash_only}\n"
     )
-    assert base_model, "Please specify a --base_model, e.g. --base_model='decapoda-research/llama-7b-hf'"
+    assert base_model, "Please specify --base_model"
 
     gradient_accumulation_steps = max(1, batch_size // micro_batch_size)
 
@@ -220,11 +250,8 @@ def train(
         device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)}
         gradient_accumulation_steps = max(1, gradient_accumulation_steps // world_size)
 
-    # Check if parameter passed or if set within environ
-    use_wandb = len(wandb_project) > 0 or (
-        "WANDB_PROJECT" in os.environ and len(os.environ["WANDB_PROJECT"]) > 0
-    )
-    # Only overwrite environ if wandb param passed
+    # wandb env
+    use_wandb = len(wandb_project) > 0 or ("WANDB_PROJECT" in os.environ and len(os.environ["WANDB_PROJECT"]) > 0)
     if len(wandb_project) > 0:
         os.environ["WANDB_PROJECT"] = wandb_project
     if len(wandb_watch) > 0:
@@ -232,84 +259,95 @@ def train(
     if len(wandb_log_model) > 0:
         os.environ["WANDB_LOG_MODEL"] = wandb_log_model
 
-    # CHANGED: prefer BF16 on A100-class GPUs; avoids FP16 overflow and equals memory cost
-    use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+    # Prefer BF16 on A100; safe init order
+    use_bf16 = torch.cuda.is_available()
+    try:
+        use_bf16 = use_bf16 and torch.cuda.is_bf16_supported()
+    except Exception:
+        pass
 
-    if load_8bit:
-        model = AutoModelForCausalLM.from_pretrained(
-            base_model,
-            load_in_8bit=load_8bit,
-            torch_dtype=torch.bfloat16 if use_bf16 else torch.float16,  # CHANGED
-            device_map=device_map,
-            trust_remote_code=True,
-        )
-    else:
-        model = AutoModelForCausalLM.from_pretrained(
-            base_model,
-            load_in_8bit=False,
-            torch_dtype=torch.bfloat16 if use_bf16 else torch.float16,  # CHANGED
-            device_map={"": int(os.environ.get("LOCAL_RANK") or 0)},
-            trust_remote_code=True,
-        )
+    # ---- Speed preset knobs (NEW) ----
+    preset = (speed_preset or "fast").lower()
+    if preset not in {"safe", "fast", "max"}:
+        preset = "fast"
+    if preset == "safe":
+        use_gc = True
+        per_device_bs = max(4, micro_batch_size)
+        group_by = False
+        optim_name = "adamw_torch"
+        compile_model = False
+        eval_every = max(1000, eval_step)
+        save_every = max(2000, save_step)
+    elif preset == "fast":
+        use_gc = False
+        per_device_bs = max(2, micro_batch_size)
+        group_by = True
+        optim_name = "adamw_torch_fused"
+        compile_model = False
+        eval_every = max(1500, eval_step)
+        save_every = max(3000, save_step)
+    else:  # max
+        use_gc = False
+        per_device_bs = max(4, micro_batch_size)
+        group_by = True
+        optim_name = "adamw_torch_fused"
+        compile_model = True
+        eval_every = 999999
+        save_every = 999999
 
-    # CHANGED: enable grad-ckpt on full-precision path too (not just k-bit)
+    # ---- Load model; prefer FA2 unless flash_only forces SDPA ----
+    attn_impl = "sdpa" if flash_only else "flash_attention_2"  # NEW
+    model = AutoModelForCausalLM.from_pretrained(
+        base_model,
+        load_in_8bit=load_8bit,
+        torch_dtype=torch.bfloat16 if use_bf16 else torch.float16,
+        device_map={"": int(os.environ.get("LOCAL_RANK") or 0)},
+        trust_remote_code=True,
+        attn_implementation=attn_impl,  # NEW
+    )
+
+    # Grad checkpointing policy (NEW)
+    if use_gradient_checkpointing and not use_gc:
+        print("[speed] Overriding: turning OFF gradient checkpointing for speed.")
+    use_gradient_checkpointing = use_gc
     if use_gradient_checkpointing:
         model.gradient_checkpointing_enable()
+    else:
+        if hasattr(model, "gradient_checkpointing_disable"):
+            model.gradient_checkpointing_disable()
 
-    # ─── Load tokenizer ────────────────────────────────────────────────
-    # Try the slow tokenizer first for LLaMA-like, fall back to AutoTokenizer.
+    # ---- Tokenizer ----
     if getattr(model.config, "model_type", "") == "llama":
         try:
             tokenizer = LlamaTokenizer.from_pretrained(base_model, legacy=True)
         except Exception as err:
-            print(f"[warn] LlamaTokenizer failed: {err}\n"
-                  "       Falling back to AutoTokenizer (fast). "
-                  "If you observe mis-tokenisation, ensure tokenizer files exist.")
-            tokenizer = AutoTokenizer.from_pretrained(
-                base_model, use_fast=True, trust_remote_code=True
-            )
+            print(f"[warn] LlamaTokenizer failed: {err}\nFalling back to AutoTokenizer.")
+            tokenizer = AutoTokenizer.from_pretrained(base_model, use_fast=True, trust_remote_code=True)
     else:
-        tokenizer = AutoTokenizer.from_pretrained(
-            base_model, use_fast=True, trust_remote_code=True
-        )
+        tokenizer = AutoTokenizer.from_pretrained(base_model, use_fast=True, trust_remote_code=True)
 
-    # CHANGED: run WeightWatcher only if explicitly requested (saves memory)
+    # Optional WW
     if enable_weightwatcher and ww is not None:
         watcher = ww.WeightWatcher(model=model)
         details = watcher.analyze()
         total_params = sum(p.numel() for p in model.parameters())
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        print(f"Model {base_model} has {total_params:,} parameters, "
-              f"of which {trainable_params:,} are trainable "
-              f"({trainable_params/total_params:.2%}).")
+        print(f"Model {base_model} has {total_params:,} params; trainable={trainable_params:,} ({trainable_params/total_params:.2%})")
         print(details)
 
-    tokenizer.pad_token_id = 0  # unk. we want this different from eos
-    tokenizer.padding_side = "left"  # Allow batched inference
+    tokenizer.pad_token_id = 0
+    tokenizer.padding_side = "left"
 
     def tokenize(prompt, add_eos_token=True):
-        result = tokenizer(
-            prompt,
-            truncation=True,
-            max_length=cutoff_len,
-            padding=False,
-            return_tensors=None,
-        )
-        if (
-            result["input_ids"][-1] != tokenizer.eos_token_id
-            and len(result["input_ids"]) < cutoff_len
-            and add_eos_token
-        ):
+        result = tokenizer(prompt, truncation=True, max_length=cutoff_len, padding=False, return_tensors=None)
+        if (result["input_ids"][-1] != tokenizer.eos_token_id and len(result["input_ids"]) < cutoff_len and add_eos_token):
             result["input_ids"].append(tokenizer.eos_token_id)
             if "chatglm" not in base_model:
                 result["attention_mask"].append(1)
-
         result["labels"] = result["input_ids"].copy()
-
         if "chatglm" in base_model:
             return {"input_ids": result["input_ids"], "labels": result["labels"]}
-        else:
-            return result
+        return result
 
     def generate_and_tokenize_prompt(data_point):
         full_prompt = generate_prompt(data_point)
@@ -318,20 +356,17 @@ def train(
             user_prompt = generate_prompt({**data_point, "output": ""})
             tokenized_user_prompt = tokenize(user_prompt, add_eos_token=False)
             user_prompt_len = len(tokenized_user_prompt["input_ids"])
-
-            tokenized_full_prompt["labels"] = (
-                [-100] * user_prompt_len + tokenized_full_prompt["labels"][user_prompt_len:]
-            )
+            tokenized_full_prompt["labels"] = [-100] * user_prompt_len + tokenized_full_prompt["labels"][user_prompt_len:]
         return tokenized_full_prompt
 
-    # Prepare quantized training if requested
+    # Prepare int8/kbit path if requested
     model = prepare_model_for_int8_training(model, use_gradient_checkpointing=use_gradient_checkpointing)
 
-    # CHANGED: safer target selection — restrict to attention if requested
+    # LoRA targets
     chosen_targets = (target_modules or lora_target_modules)
     if adapter_name in ("lora", "bottleneck"):
         if restrict_lora_to_attention:
-            chosen_targets = ["q_proj", "k_proj", "v_proj", "o_proj"]  # CHANGED
+            chosen_targets = ["q_proj", "k_proj", "v_proj", "o_proj"]  # CHANGED: smaller, faster
         else:
             chosen_targets = default_lora_targets(model, explicit=chosen_targets)
         if not chosen_targets:
@@ -362,33 +397,27 @@ def train(
             task_type="CAUSAL_LM",
         )
     elif adapter_name == "prefix-tuning":
-        config = PrefixTuningConfig(
-            num_virtual_tokens=num_virtual_tokens,
-            task_type="CAUSAL_LM",
-        )
+        config = PrefixTuningConfig(num_virtual_tokens=num_virtual_tokens, task_type="CAUSAL_LM")
     else:
         raise ValueError(f"Unknown adapter_name: {adapter_name}")
 
     model = get_peft_model(model, config)
-
-    # CHANGED: ensure LoRA weights match base model dtype (fixes _cast_input_dtype OOM)
-    _align_lora_dtype(model)
+    _align_lora_dtype(model)  # CHANGED: avoid PEFT hidden casts
 
     if adapter_name == "prefix-tuning":
         model.to('cuda')
 
-    # Load data
-    if data_path.endswith(".json"):  # todo: support jsonl
+    # Data
+    if data_path.endswith(".json"):
         data = load_dataset("json", data_files=data_path)
     else:
         data = load_dataset(data_path)
 
-    # Resume logic
     if resume_from_checkpoint:
-        checkpoint_name = os.path.join(resume_from_checkpoint, "pytorch_model.bin")  # Full checkpoint
+        checkpoint_name = os.path.join(resume_from_checkpoint, "pytorch_model.bin")
         if not os.path.exists(checkpoint_name):
             checkpoint_name = os.path.join(resume_from_checkpoint, "adapter_model.bin")
-            resume_from_checkpoint = False  # So the trainer won't try loading its state
+            resume_from_checkpoint = False
         if os.path.exists(checkpoint_name):
             print(f"Restarting from {checkpoint_name}")
             adapters_weights = torch.load(checkpoint_name, map_location="cpu")
@@ -396,7 +425,7 @@ def train(
         else:
             print(f"Checkpoint {checkpoint_name} not found")
 
-    model.print_trainable_parameters()  # transparency on % trainable
+    model.print_trainable_parameters()
 
     if val_set_size > 0:
         train_val = data["train"].train_test_split(test_size=val_set_size, shuffle=True, seed=42)
@@ -407,38 +436,38 @@ def train(
         val_data = None
 
     if not ddp and torch.cuda.device_count() > 1:
-        # keeps Trainer from trying its own DataParallelism when more than 1 gpu is available
         model.is_parallelizable = True
         model.model_parallel = True
 
-    # ---- Build TrainingArguments safely (handle old transformers) ----
+    # ---- TrainingArguments (NEW fused/TF32/preset knobs) ----
     _args_dict = dict(
-        per_device_train_batch_size=micro_batch_size,
-        gradient_accumulation_steps=gradient_accumulation_steps,
-        warmup_steps=100,
+        per_device_train_batch_size=per_device_bs,
+        gradient_accumulation_steps=max(1, batch_size // per_device_bs // max(1, world_size)),
+        warmup_steps=50,
         num_train_epochs=num_epochs,
         learning_rate=learning_rate,
-        # CHANGED: prefer bf16 when available
         fp16=False if use_bf16 else True,
         bf16=True if use_bf16 else False,
-        logging_steps=10,
-        optim="adamw_torch",
+        logging_steps=log_every,
+        optim=optim_name,  # NEW: fused on A100 when available
         save_strategy="steps",
-        save_steps=save_step,
+        save_steps=save_every,
         output_dir=output_dir,
-        save_total_limit=3,
+        save_total_limit=2,
         ddp_find_unused_parameters=False if ddp else None,
-        group_by_length=group_by_length,
+        group_by_length=group_by,  # NEW
         report_to="wandb" if use_wandb else None,
         run_name=wandb_run_name if use_wandb else None,
+        dataloader_num_workers=4,   # NEW
+        dataloader_pin_memory=True, # NEW
     )
 
-    # optional args only if supported
     _sig = __import__("inspect").signature(transformers.TrainingArguments.__init__)
     if "evaluation_strategy" in _sig.parameters and val_set_size > 0:
         _args_dict["evaluation_strategy"] = "steps"
-        _args_dict["eval_steps"] = eval_step
-        _args_dict["load_best_model_at_end"] = True
+        _args_dict["eval_steps"] = eval_every
+        _args_dict["load_best_model_at_end"] = False  # faster
+
     if "ddp_find_unused_parameters" not in _sig.parameters:
         _args_dict.pop("ddp_find_unused_parameters", None)
 
@@ -455,59 +484,45 @@ def train(
     )
     model.config.use_cache = False
 
-    # CHANGED: skip torch.compile to avoid graph-capture memory bloat
-    # if torch.__version__ >= "2" and sys.platform != "win32":
-    #     model = torch.compile(model)  # intentionally disabled
+    # Optional compile in 'max' preset
+    if compile_model and torch.__version__ >= "2" and sys.platform != "win32":
+        try:
+            model = torch.compile(model, mode="reduce-overhead", fullgraph=False)
+            print("[speed] torch.compile enabled (reduce-overhead).")
+        except Exception as e:
+            print(f"[speed] torch.compile disabled ({e}).")
 
     # Save only adapter weights
     old_state_dict = model.state_dict
     model.state_dict = (lambda self, *_, **__: get_peft_model_state_dict(self, old_state_dict())).__get__(model, type(model))
 
-    trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+    # Train with attention context
+    with attention_ctx(flash_only=flash_only):  # NEW
+        trainer.train(resume_from_checkpoint=resume_from_checkpoint)
 
     model.save_pretrained(output_dir)
+    print("\nDone. If there's a warning about missing keys above, please disregard :)")
 
-    print("\nIf there's a warning about missing keys above, please disregard :)")
-
-
+# ======================= PROMPT BUILDER =======================
 def generate_prompt(data_point):
     """
     Build a textual prompt from a single dataset record.
-
-    Supported schemas
-    -----------------
-    1) Alpaca-style:
-       {"instruction": str, "input": str or "", "output": str}
-
-    2) BoolQ-style QA:
-       {"question": str, "passage": str, "answer": bool}
-
-    The function never assumes the presence of an "input" key and will
-    synthesise fields that are missing, preventing KeyError.
+    Supports:
+      1) Alpaca-style:  {"instruction": str, "input": str or "", "output": str}
+      2) BoolQ-style:   {"question": str, "passage": str, "answer": bool}
     """
-    # Default instruction if none provided
-    instruction = data_point.get(
-        "instruction",
-        "Answer the question based on the passage."
-    )
-
-    # Grab user input if present
+    instruction = data_point.get("instruction", "Answer the question based on the passage.")
     user_input = data_point.get("input")
 
-    # Fallback to BoolQ keys
     if user_input is None and "question" in data_point:
         user_input = data_point["question"]
         if "passage" in data_point:
-            user_input = (
-                f"Passage:\n{data_point['passage']}\n\nQuestion:\n{user_input}"
-            )
+            user_input = f"Passage:\n{data_point['passage']}\n\nQuestion:\n{user_input}"
 
-    # Determine reference answer / expected output
     output = data_point.get("output")
     if output is None and "answer" in data_point:
         output = "yes" if data_point["answer"] else "no"
 
-    # Compose final prompt
     if user_input:
         return (
             "Below is an instruction that describes a task, paired with an "
@@ -530,6 +545,6 @@ def generate_prompt(data_point):
             f"{output}"
         )
 
-
+# ======================= ENTRY =======================
 if __name__ == "__main__":
     fire.Fire(train)

@@ -8,11 +8,20 @@ import argparse
 import fire
 
 import torch
+import wandb
+
+
+
+import datetime
+
+
 
 sys.path.append(os.path.join(os.getcwd(), "peft/src/"))
 from peft import PeftModel
 from tqdm import tqdm
-from transformers import GenerationConfig, LlamaForCausalLM, LlamaTokenizer, AutoModelForCausalLM, AutoTokenizer
+from transformers import GenerationConfig, LlamaForCausalLM, LlamaTokenizer, AutoModelForCausalLM, AutoTokenizer, set_seed
+from peft import PeftModel, PeftConfig
+from selective_optimizers.load_store import load_summary_from_disk, load_weights_from_summary
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -29,48 +38,80 @@ except:  # noqa: E722
 def main(
         load_8bit: bool = False,
         base_model: str = "",
-        lora_weights: str = "tloen/alpaca-lora-7b",
+        adapter_weights: str = "",
         share_gradio: bool = False,
 ):
     args = parse_args()
+    # import pdb; pdb.set_trace()
+
+    if args.seed:
+        print("========================================================================")
+        print(f"setting seed to {args.seed}")
+        set_seed(int(args.seed))
+
+    if args.report_to == "wandb":
+        wandb.init(
+                project=args.wandb_project,
+                name=args.wandb_run_name,
+                config={
+                    "model": args.base_model,
+                    "do-sample": args.do_sample,
+                    "temperature": args.temperature,
+                    "top_p": args.top_p,
+                    "top_k": args.top_k,
+                    "num_beams": args.num_beams,
+                    "max_new_tokens": args.max_new_tokens,
+                }
+        )
+
+    generation_config = GenerationConfig(
+        do_sample = bool(args.do_sample),
+        temperature=float(args.temperature),
+        top_p=float(args.top_p),
+        top_k=int(args.top_k),
+        num_beams=int(args.num_beams),
+    )
 
     def evaluate(
             instructions,
-            input=None,
-            temperature=0.1,
-            top_p=0.75,
-            top_k=40,
-            num_beams=4,
-            max_new_tokens=32,
-            **kwargs,
+            input_text = None
     ):
-        prompts = [generate_prompt(instruction, input) for instruction in instructions]
-        inputs = tokenizer(prompts, return_tensors="pt", padding=True)
-        input_ids = inputs["input_ids"].to(device)
-        generation_config = GenerationConfig(
-            temperature=temperature,
-            top_p=top_p,
-            top_k=top_k,
-            num_beams=num_beams,
-            **kwargs,
+        prompts = [generate_prompt(instruction, input_text) for instruction in instructions]
+        # inputs = tokenizer(prompts, return_tensors="pt", padding=False)
+        inputs = tokenizer(
+            prompts,
+            return_tensors="pt",
+            padding=True,          # pad to longest in batch
+            truncation=True,       # truncate if any prompt exceeds max_length
+            max_length=getattr(args, "cutoff_len", 2048),  # pick something reasonable
         )
+        input_ids = inputs["input_ids"].to(device)
         with torch.no_grad():
             generation_output = model.generate(
                 input_ids=input_ids,
                 generation_config=generation_config,
                 return_dict_in_generate=True,
                 output_scores=True,
-                max_new_tokens=max_new_tokens,
+                max_new_tokens=int(args.max_new_tokens),
+                pad_token_id=tokenizer.pad_token_id,
             )
         s = generation_output.sequences
         outputs = tokenizer.batch_decode(s, skip_special_tokens=True)
         outputs = [o.split("### Response:")[1].strip() for o in outputs]
-        print(outputs)
+        #print(outputs)
         return outputs
 
-    save_file = f'experiment/{args.model}-{args.adapter}-{args.dataset}.json'
-    create_dir('experiment/')
+    if args.output_dir != "":
+        results_path = os.path.join(args.output_dir, args.dataset)
+    elif args.adapter_weights != "":
+        results_path = os.path.join(args.adapter_weights, args.dataset)
+    else:
+        raise ValueError(f'can not determine output directory')
 
+    os.makedirs(results_path, exist_ok=True)
+    save_file = f'{results_path}/seed_{args.seed}.json'
+    save_files2 = f'{results_path}/seed_{args.seed}.txt'
+    ff = open(save_files2, 'w')
     dataset = load_data(args)
     batches = create_batch(dataset, args.batch_size)
     tokenizer, model = load_model(args)
@@ -97,6 +138,7 @@ def main(
             new_data['pred'] = predict
             new_data['flag'] = flag
             output_data.append(new_data)
+            '''
             print(data["instruction"])
             print(output)
             print('prediction:', predict)
@@ -104,10 +146,24 @@ def main(
         print('---------------')
         print(f'\rtest:{idx + 1}/{total} | accuracy {correct}  {correct / current}')
         print('---------------')
+           '''
+        ff.write(f'\rtest:{idx + 1}/{total} | accuracy {correct}  {correct / (idx + 1)}')
+        ff.write("\n")
         with open(save_file, 'w+') as f:
             json.dump(output_data, f, indent=4)
+
+        if args.report_to == "wandb":
+            wandb.log({
+                "instance_index": idx,
+                "correct_count": correct,
+                "accuracy_so_far": correct/ total,
+                })
+
         pbar.update(1)
     pbar.close()
+    if args.report_to == "wandb":
+        wandb.log({"final_accuracy": correct/ total})
+        wandb.finish()
     print('\n')
     print('test finished')
 
@@ -118,15 +174,15 @@ def create_dir(dir_path):
     return
 
 
-def generate_prompt(instruction, input=None):
-    if input:
+def generate_prompt(instruction, input_text=None):
+    if input_text and input_text != "":
         return f"""Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
 
                 ### Instruction:
                 {instruction}
 
                 ### Input:
-                {input}
+                {input_text}
 
                 ### Response:
                 """  # noqa: E501
@@ -168,13 +224,26 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', choices=["boolq", "piqa", "social_i_qa", "hellaswag", "winogrande", "ARC-Challenge", "ARC-Easy", "openbookqa"],
                         required=True)
-    parser.add_argument('--model', choices=['LLaMA-7B', "LLaMA-13B",'BLOOM-7B', 'GPT-j-6B'], required=True)
-    parser.add_argument('--adapter', choices=['LoRA', 'AdapterP', 'AdapterH', 'Parallel'],
+    parser.add_argument('--model', choices=['LLaMA-7B', "LLaMA-13B",'BLOOM-7B', 'GPT-j-6B', 'Other', 'Llama-3.2-1B','Llama-3.2-3B','Llama-3.2-1B-Instruct', 'Llama-3.2-3B-Instruct'], required=True)
+    parser.add_argument('--adapter', choices=['LoRA','ID3', 'AdapterP', 'AdapterH', 'Parallel'],
                         required=True)
     parser.add_argument('--base_model', required=True)
-    parser.add_argument('--lora_weights', required=True)
-    parser.add_argument('--batch_size', type=int, required=True)
+    parser.add_argument('--tokenizer_path', required=True)
+    parser.add_argument('--adapter_weights', required=True)
+    parser.add_argument('--batch_size', type=int, required=False, default=1)
     parser.add_argument('--load_8bit', action='store_true', default=False)
+    parser.add_argument('--do-sample', required=False, default=True)
+    parser.add_argument('--temperature', required=False, default=1.0)
+    parser.add_argument('--top_p', required=False, default=1.0)
+    parser.add_argument('--top_k', required=False, default=0)
+    parser.add_argument('--num_beams', required=False, default=1)
+    parser.add_argument('--max_new_tokens', required=False, default=256)
+
+    parser.add_argument('--output_dir', required=False, default="")
+    parser.add_argument('--report_to', required=False, default="")
+    parser.add_argument('--wandb_project', required=False, default="llama3.2-3B-commonsense170k_eval-Sparse0.33")
+    parser.add_argument('--wandb_run_name', required=False, default="")
+    parser.add_argument('--seed')
 
     return parser.parse_args()
 
@@ -191,15 +260,13 @@ def load_model(args) -> tuple:
     base_model = args.base_model
     if not base_model:
         raise ValueError(f'can not find base model name by the value: {args.model}')
-    lora_weights = args.lora_weights
-    if not lora_weights:
-        raise ValueError(f'can not find lora weight, the value is: {lora_weights}')
+    adapter_weights = args.adapter_weights
 
     load_8bit = args.load_8bit
     if "LLaMA" in args.model:
         tokenizer = LlamaTokenizer.from_pretrained(base_model)
     else:
-        tokenizer = AutoTokenizer.from_pretrained(base_model)
+        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
     tokenizer.padding_side = "left"
     tokenizer.pad_token_id = (
         0  # unk. we want this to be different from the eos token
@@ -207,38 +274,66 @@ def load_model(args) -> tuple:
     if device == "cuda":
         model = AutoModelForCausalLM.from_pretrained(
             base_model,
-            load_in_8bit=load_8bit,
+            load_in_8bit=False,
             torch_dtype=torch.float16,
             device_map="auto",
             trust_remote_code=True,
         ) # fix zwq
-        model = PeftModel.from_pretrained(
-            model,
-            lora_weights,
-            torch_dtype=torch.float16,
-            device_map={"":0}
-        )
+	
+        print(f"Loaded model from - {base_model}")
+        if adapter_weights != "":
+            #import pdb; pdb.set_trace()
+            #load the PEFT config
+            peft_config = PeftConfig.from_pretrained(adapter_weights)
+            model = PeftModel.from_pretrained(
+                model,
+                adapter_weights,
+                #config = peft_config,
+                torch_dtype=torch.float16,
+                device_map=None,
+                trust_remote_code=True,
+            )
+            model.print_trainable_parameters()
+            if args.adapter.lower() == "id3":
+                summary = load_summary_from_disk(os.path.join(adapter_weights, "summary.pt"))
+                load_weights_from_summary(model, summary)
+            merged_model = model.merge_and_unload()
+            model = merged_model
+            model = model.half()
+            print(f"Loaded adapter from - {adapter_weights}")
+        else:
+            print(f"No adapter weights provided")
+        model = model.to(device)
     elif device == "mps":
         model = AutoModelForCausalLM.from_pretrained(
             base_model,
             device_map={"": device},
             torch_dtype=torch.float16,
         )
-        model = PeftModel.from_pretrained(
-            model,
-            lora_weights,
-            device_map={"": device},
-            torch_dtype=torch.float16,
-        )
+        if adapter_weights != "":
+            try:
+                model = PeftModel.from_pretrained(
+                    model,
+                    adapter_weights,
+                    device_map={"": device},
+                    torch_dtype=torch.float16,
+                )
+            except:
+                pass
     else:
         model = AutoModelForCausalLM.from_pretrained(
             base_model, device_map={"": device}, low_cpu_mem_usage=True
         )
-        model = PeftModel.from_pretrained(
-            model,
-            lora_weights,
-            device_map={"": device},
-        )
+
+        if adapter_weights != "":
+            try:
+                model = PeftModel.from_pretrained(
+                    model,
+                    adapter_weights,
+                    device_map={"": device},
+                )
+            except:
+                pass
 
         # unwind broken decapoda-research config
         model.config.pad_token_id = tokenizer.pad_token_id = 0  # unk
@@ -264,6 +359,7 @@ def load_instruction(args) -> str:
 
 def extract_answer(args, sentence: str) -> float:
     dataset = args.dataset
+    sentence = sentence.lower()
     if dataset == 'boolq':
         sentence_ = sentence.strip()
         pred_answers = re.findall(r'true|false', sentence_)
