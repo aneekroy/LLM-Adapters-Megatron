@@ -199,7 +199,7 @@ def train(
 
     # NEW: mem/speed knobs
     restrict_lora_to_attention: bool = True,
-    speed_preset: str = "fast",          # NEW: 'safe' | 'fast' | 'max'
+    speed_preset: str = "safe",          # NEW: 'safe' | 'fast' | 'max'
     log_every: int = 50,                  # NEW
     flash_only: bool = False,             # NEW: force SDPA-Flash even if FA2 is unavailable
 ):
@@ -311,7 +311,7 @@ def train(
         print("[speed] Overriding: turning OFF gradient checkpointing for speed.")
     use_gradient_checkpointing = use_gc
     if use_gradient_checkpointing:
-        model.gradient_checkpointing_enable()
+        model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
     else:
         if hasattr(model, "gradient_checkpointing_disable"):
             model.gradient_checkpointing_disable()
@@ -324,7 +324,16 @@ def train(
             print(f"[warn] LlamaTokenizer failed: {err}\nFalling back to AutoTokenizer.")
             tokenizer = AutoTokenizer.from_pretrained(base_model, use_fast=True, trust_remote_code=True)
     else:
-        tokenizer = AutoTokenizer.from_pretrained(base_model, use_fast=True, trust_remote_code=True)
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(base_model, use_fast=True, trust_remote_code=True)
+        except Exception as e:
+            print("[tokenizer-fast failed] falling back to slow:", e)
+            tokenizer = AutoTokenizer.from_pretrained(base_model, use_fast=False, trust_remote_code=True)
+    
+    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
+   
+
 
     # Optional WW
     if enable_weightwatcher and ww is not None:
@@ -545,6 +554,5 @@ def generate_prompt(data_point):
             f"{output}"
         )
 
-# ======================= ENTRY =======================
 if __name__ == "__main__":
     fire.Fire(train)

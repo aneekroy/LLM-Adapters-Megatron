@@ -713,15 +713,48 @@ WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=1 PYTHONNOUSERSITE=1 \
 
 =========================================================================================================================
 
-WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=0 PYTHONNOUSERSITE=1 \
-"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3201 active_learning.py \
-    --base_model "/home/models/Qwen_Sparse/Qwen3-8B-Sparse-0.20" \
-    --data_path /home/aneek/LLM-Adapters/ft-training_set/split_20/math_14k_part1_of_5.json   \
-    --output_dir ./trained_models/Qwen3_Sparse-Ensemble-Split-20/Qwen3-8B-Sparse-0.20-Math14k-part1-al50 \
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=2 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3201 active_learning_fast.py \
+    --base_model "/home/models/nvidia-sparse/OpenReasoning-Nemotron-7B-Sparse-0.75" \
+    --data_path "/home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part1_of_4.json"   \
+    --output_dir ./trained_models/Nemotron-7B-Sparse/OpenReasoning-Nemotron-7B-Sparse-0.75-Ensemble_split_25/OpenReasoning-Nemotron-7B-Sparse-0.80-Math14k-part1-al50 \
     --rounds 3 \
     --init_frac 0.1 \
     --acq_frac 0.2 
 
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=2 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3201 active_learning_fast.py \
+    --base_model "/home/models/nvidia-sparse/OpenReasoning-Nemotron-7B-Sparse-0.75" \
+    --data_path "/home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part2_of_4.json"   \
+    --output_dir ./trained_models/Nemotron-7B-Sparse/OpenReasoning-Nemotron-7B-Sparse-0.75-Ensemble_split_25/OpenReasoning-Nemotron-7B-Sparse-0.80-Math14k-part2-al50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=2 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3201 active_learning_fast.py \
+    --base_model "/home/models/nvidia-sparse/OpenReasoning-Nemotron-7B-Sparse-0.75" \
+    --data_path "/home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part3_of_4.json"   \
+    --output_dir ./trained_models/Nemotron-7B-Sparse/OpenReasoning-Nemotron-7B-Sparse-0.75-Ensemble_split_25/OpenReasoning-Nemotron-7B-Sparse-0.80-Math14k-part3-rand50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2  
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=2 PYTHONNOUSERSITE=1 \
+"$CONDA_PREFIX/bin/torchrun" --nproc_per_node=1 --master_port=3201 active_learning_fast.py \
+    --base_model "/home/models/nvidia-sparse/OpenReasoning-Nemotron-7B-Sparse-0.75" \
+    --data_path "/home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part4_of_4.json"   \
+    --output_dir ./trained_models/Nemotron-7B-Sparse/OpenReasoning-Nemotron-7B-Sparse-0.75-Ensemble_split_25/OpenReasoning-Nemotron-7B-Sparse-0.80-Math14k-part4-rand50 \
+    --rounds 3 \
+    --init_frac 0.1 \
+    --acq_frac 0.2 
+
+
+WORLD_SIZE=1 CUDA_VISIBLE_DEVICES=2 python  finetune.py   --base_model "/home/models/nvidia-sparse/OpenReasoning-Nemotron-7B-Sparse-0.75" \
+  --data_path /home/aneek/LLM-Adapters/ft-training_set/split_25/math_14k_part1_of_4.json \
+  --output_dir ./trained_models/Nemotron-7B-Sparse/OpenReasoning-Nemotron-7B-Sparse-0.75-Ensemble_split_20/OpenReasoning-Nemotron-7B-Sparse-0.75-Math14k-part1 \
+  --batch_size 4   --micro_batch_size 1   --num_epochs 3 \
+  --learning_rate 3e-5   --cutoff_len 256   --val_set_size 120 --wandb_run_name OpenReasoning-Nemotron-7B-Sparse-0.75-Math14k-part1
 
 
 

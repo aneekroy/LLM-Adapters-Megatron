@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-# active_learning_fast.py (fixed tokenizer routing & robust finetune subprocess + stable scoring)
+# active_learning_fast.py
+# Fixed tokenizer routing & robust finetune subprocess + stable scoring
+# UPDATED: compatible with new finetune.py (speed_preset/flash_only/restrict_lora_to_attention, epochs mapping)
 
 import os, re, math, json, random, inspect, hashlib, time, sys, subprocess
 from contextlib import nullcontext
@@ -24,7 +26,6 @@ except Exception:
 
 torch.set_float32_matmul_precision("high")
 torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32 = True
 # IMPORTANT: disable autotuned algo changes across batches for stable replays
 torch.backends.cudnn.benchmark = False
 
@@ -68,9 +69,9 @@ def _wandb_artifact_add(run, name: str, type_: str, files: List[str]):
 
 # ===================== Finetune entrypoints =====================
 try:
-    from finetune import train as finetune_train  # for signature only
+    from finetune_fast import train as finetune_train  # for signature only
     try:
-        from finetune import generate_and_tokenize_prompt as DEFAULT_PROMPT_FN
+        from finetune_fast import generate_and_tokenize_prompt as DEFAULT_PROMPT_FN
     except Exception:
         DEFAULT_PROMPT_FN = None
 except Exception as e:
@@ -111,6 +112,7 @@ def _resolve_tokenizer_src(base_model: str, tokenizer_path: Optional[str]) -> st
     1) If tokenizer_path provided, use it.
     2) If base_model under .../nvidia-sparse/...-Sparse-x, try sibling dense dir .../nvidia/... (strip -Sparse-...).
     3) Else, use base_model.
+    NOTE: New finetune.py does NOT accept --tokenizer_path; this is only for local scoring tokenization.
     """
     if tokenizer_path:
         return tokenizer_path
@@ -126,36 +128,57 @@ def _resolve_tokenizer_src(base_model: str, tokenizer_path: Optional[str]) -> st
 
 # ===================== Finetune-arg mapping =====================
 def _filter_and_map_finetune_kwargs(fn: Callable, cutoff_len: int, kwargs: Dict) -> Dict:
+    """
+    Filters user/AL kwargs to the actual finetune.train signature and
+    provides sensible defaults and synonym mapping for common flags.
+
+    UPDATED:
+      - Correctly map 'epochs' and 'num_train_epochs' => 'num_epochs' (new finetune.py)
+      - Seed micro_batch_size from per_device_train_batch_size if present
+      - Leave new flags (speed_preset, flash_only, restrict_lora_to_attention, etc.) untouched
+    """
     sig = inspect.signature(fn); params = set(sig.parameters)
     alias = {
-        "batch_size": ["batch_size"],  # ensure batch_size is forwarded
-        "num_train_epochs": ["num_train_epochs", "epochs", "num_epochs"],
-        "epochs": ["epochs", "num_train_epochs"],
+        # epochs synonyms → new finetune.py uses 'num_epochs'
+        "num_epochs": ["num_epochs", "epochs", "num_train_epochs"],
+        "epochs": ["num_epochs"],                     # accept --epochs from callers
+        "num_train_epochs": ["num_epochs"],           # HF-style -> ours
+
+        # learning-rate synonyms
         "learning_rate": ["learning_rate", "lr"],
-        "lr": ["lr", "learning_rate"],
-        "micro_batch_size": ["micro_batch_size"],
-        "per_device_train_batch_size": ["per_device_train_batch_size"],
-        "gradient_accumulation_steps": ["gradient_accumulation_steps"],
-        "seed": ["seed"],
-        "lora_r": ["lora_r", "r"],
-        "lora_alpha": ["lora_alpha", "alpha"],
-        "lora_dropout": ["lora_dropout", "dropout"],
-        "cutoff_len": ["cutoff_len", "max_seq_len"],
+        "lr": ["learning_rate"],
+
+        # batch knobs
+        "batch_size": ["batch_size"],
+        "micro_batch_size": ["micro_batch_size", "per_device_train_batch_size"],
+
+        # validation size aliases
         "val_set_size": ["val_set_size", "validation_size", "eval_holdout_size"],
+
+        # passthrough (only if present in target signature)
         "wandb_run_name": ["wandb_run_name"],
     }
+
+    # Seed defaults
     kws = dict(kwargs)
     kws.setdefault("cutoff_len", cutoff_len)
 
-    # If user didn’t give batch_size, derive from per_device_train_batch_size or fallback to 4.
+    # If user provided per_device_train_batch_size, mirror into micro_batch_size unless already set
+    if "micro_batch_size" not in kws and "per_device_train_batch_size" in kws:
+        kws["micro_batch_size"] = kws["per_device_train_batch_size"]
+
+    # If user didn’t give batch_size, derive from micro/per_device, fallback to 4.
     if "batch_size" not in kws:
         if "per_device_train_batch_size" in kws:
             kws["batch_size"] = kws["per_device_train_batch_size"]
+        elif "micro_batch_size" in kws:
+            kws["batch_size"] = max(4, int(kws["micro_batch_size"]))
         else:
             kws["batch_size"] = 4
 
     out = {}
     for k, v in kws.items():
+        # Resolve canonical target name
         cand = [k] + alias.get(k, [])
         tgt = next((c for c in cand if c in params), None)
         if tgt is not None:
@@ -310,7 +333,7 @@ def _sanitize_cmd(cmd: List[str]) -> List[str]:
 
 # ===================== Subprocess finetune =====================
 def _run_finetune_subprocess(base_model, tmp_json, rd, mapped, cuda_visible="0", tokenizer_path: Optional[str]=None):
-    finetune_py = os.path.join(os.path.dirname(__file__), "finetune.py")
+    finetune_py = os.path.join(os.path.dirname(__file__), "finetune_fast.py")
     cmd = [
         sys.executable, finetune_py,
         "--base_model", base_model,
@@ -318,14 +341,15 @@ def _run_finetune_subprocess(base_model, tmp_json, rd, mapped, cuda_visible="0",
         "--output_dir", rd,
     ]
 
-    # Conditionally append tokenizer_path ONLY if finetune.py exposes it
+    # NOTE: New finetune.py doesn’t expose --tokenizer_path; keep conditional for forward-compat.
     if tokenizer_path and _supports_flag(finetune_py, "--tokenizer_path"):
         cmd += ["--tokenizer_path", tokenizer_path]
 
-    # Ensure batch_size present
+    # Ensure batch_size present (already seeded in mapper)
     if "batch_size" not in mapped:
-        mapped["batch_size"] = mapped.get("per_device_train_batch_size", 4)
+        mapped["batch_size"] = mapped.get("micro_batch_size", mapped.get("per_device_train_batch_size", 4))
 
+    # Append mapped args (booleans → 'true'/'false')
     for k, v in mapped.items():
         if isinstance(v, bool):
             cmd += [f"--{k}", str(v).lower()]
@@ -333,7 +357,6 @@ def _run_finetune_subprocess(base_model, tmp_json, rd, mapped, cuda_visible="0",
             cmd += [f"--{k}", str(v)]
 
     cmd = _sanitize_cmd(cmd)
-
     env = os.environ.copy()
     env.setdefault("CUDA_VISIBLE_DEVICES", cuda_visible)
     env.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
@@ -388,14 +411,15 @@ def active_learning(
     wandb_tags: Optional[str] = None,     # comma-separated
     wandb_log_artifacts: bool = True,
 
-    # TOKENIZER override (optional)
+    # TOKENIZER override (optional, for scoring only)
     tokenizer_path: Optional[str] = None,
 
+    # passthrough to finetune.train (new flags supported automatically)
     **finetune_kwargs,
 ):
     transformers.set_seed(seed); random.seed(seed)
 
-    # Resolve tokenizer source
+    # Resolve tokenizer source for scoring/tokenization
     tok_src = _resolve_tokenizer_src(base_model, tokenizer_path)
 
     # Dataset + stable indices
@@ -462,7 +486,7 @@ def active_learning(
     _wandb_log(wb, {"round":0,"labelled_size":int(len(labelled)),"pool_size":int(len(pool_ids)),"val_set_size":int(finetune_kwargs["val_set_size"]),"event":"seed_selection_saved"})
     if wandb_log_artifacts: _wandb_artifact_add(wb, name="al_seed_selection", type_="al-round", files=[os.path.join(r0, f"selection_seed_0p{int(init_frac*100):02d}.json")])
 
-    # Finetune kwargs mapped to finetune.train signature (inject batch_size if missing)
+    # Finetune kwargs mapped to finetune.train signature (inject batch_size/micro mapping, epochs mapping)
     mapped = _filter_and_map_finetune_kwargs(finetune_train, cutoff_len, finetune_kwargs)
 
     # ===== Rounds =====
@@ -485,9 +509,9 @@ def active_learning(
             base_model=base_model,
             tmp_json=tmp_json,
             rd=rd,
-            mapped=mapped,
+            mapped=mapped,  # includes speed_preset/flash_only/restrict_lora_to_attention if supplied
             cuda_visible=os.environ.get("CUDA_VISIBLE_DEVICES","0"),
-            tokenizer_path=_resolve_tokenizer_src(base_model, tokenizer_path),  # conditionally forwarded
+            tokenizer_path=_resolve_tokenizer_src(base_model, tokenizer_path),  # conditionally forwarded if supported
         )
         _hard_cuda_cleanup()
         _wandb_log(wb, {"round":r, "event":"train_done", "round_output_dir":rd})
